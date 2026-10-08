@@ -102,6 +102,11 @@ export async function POST(request: Request) {
       .select('id')
       .single()
 
+    // The Evolution webhook may have already stored this outbound message (unique conversation+message_id)
+    if (msgErr?.code === '23505') {
+      return NextResponse.json({ success: true, whatsapp_message_id: waMessageId })
+    }
+
     if (msgErr || !inserted) {
       console.error('[unofficial/send] message persist error:', msgErr)
       return NextResponse.json({ error: 'Message sent but failed to save' }, { status: 500 })

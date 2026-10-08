@@ -67,9 +67,12 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
 
   const key = msgData.key
   if (!key) { console.warn('[unofficial/webhook] no key in message data'); return }
-  if (key.fromMe) { console.log('[unofficial/webhook] skipping fromMe message'); return }
+  const fromMe = key.fromMe === true
 
-  const phone = phoneFromJid(key.remoteJid)
+  // Newer WhatsApp versions may address chats by @lid; prefer the real phone JID when provided
+  const rawJid: string = key.remoteJid ?? ''
+  const jid = rawJid.endsWith('@lid') ? (key.remoteJidAlt ?? key.senderPn ?? rawJid) : rawJid
+  const phone = phoneFromJid(jid)
   if (!phone) { console.warn('[unofficial/webhook] invalid jid:', key.remoteJid); return }
 
   const message = msgData.message
@@ -97,13 +100,13 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   const existing = await findExistingContact(db, instanceRow.account_id, phone)
   if (existing) {
     contactId = existing.id
-    if (msgData.pushName && msgData.pushName !== existing.name) {
+    if (!fromMe && msgData.pushName && msgData.pushName !== existing.name) {
       await db.from('contacts').update({ name: msgData.pushName, updated_at: new Date().toISOString() }).eq('id', existing.id)
     }
   } else {
     const { data: created, error: createErr } = await db
       .from('contacts')
-      .insert({ account_id: instanceRow.account_id, user_id: ownerUserId, phone, name: msgData.pushName || phone })
+      .insert({ account_id: instanceRow.account_id, user_id: ownerUserId, phone, name: (!fromMe && msgData.pushName) || phone })
       .select('id').single()
     if (createErr || !created) {
       if (isUniqueViolation(createErr)) {
@@ -173,13 +176,13 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
     .from('messages')
     .insert({
       conversation_id: conversationId,
-      sender_type: 'customer',
+      sender_type: fromMe ? 'agent' : 'customer',
       content_type: contentType,
       content_text: contentText,
       media_url: mediaUrl,
       media_type: mediaType,
       message_id: key.id,
-      status: 'delivered',
+      status: fromMe ? 'sent' : 'delivered',
       created_at: createdAt,
     })
     .select('id')
@@ -193,6 +196,16 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   if (!insertedRows || insertedRows.length === 0) { console.warn('[unofficial/webhook] no rows inserted'); return }
 
   console.log('[unofficial/webhook] message saved, id:', insertedRows[0].id)
+
+  // Sent from the phone itself: just refresh the preview — no unread bump, flows, automations or AI.
+  if (fromMe) {
+    await db.from('conversations').update({
+      last_message_text: contentText || `[${contentType}]`,
+      last_message_at: createdAt,
+      updated_at: new Date().toISOString(),
+    }).eq('id', conversationId)
+    return
+  }
 
   // Bump conversation (last_message_at + unread_count++)
   const { error: bumpError } = await db.rpc('bump_conversation_on_inbound', {
