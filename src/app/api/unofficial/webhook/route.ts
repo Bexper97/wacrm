@@ -96,6 +96,18 @@ function parseMessage(raw: Record<string, any>): ParsedMessage {
   return { contentType: 'text', contentText: '[unsupported]', mediaUrl: null, mediaType: null }
 }
 
+function previewText(contentType: string, contentText: string | null): string {
+  const caption = contentText?.trim()
+  switch (contentType) {
+    case 'image': return caption ? `📷 ${caption}` : '📷 Foto'
+    case 'video': return caption ? `🎥 ${caption}` : '🎥 Vídeo'
+    case 'audio': return '🎤 Áudio'
+    case 'document': return caption ? `📄 ${caption}` : '📄 Documento'
+    case 'location': return '📍 Localização'
+    default: return caption || `[${contentType}]`
+  }
+}
+
 async function mirrorMedia(args: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: any
@@ -318,7 +330,7 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   // Sent from the phone itself: just refresh the preview — no unread bump, flows, automations or AI.
   if (fromMe) {
     await db.from('conversations').update({
-      last_message_text: contentText || `[${contentType}]`,
+      last_message_text: previewText(contentType, contentText),
       last_message_at: createdAt,
       updated_at: new Date().toISOString(),
     }).eq('id', conversationId)
@@ -328,13 +340,13 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   // Bump conversation (last_message_at + unread_count++)
   const { error: bumpError } = await db.rpc('bump_conversation_on_inbound', {
     p_conversation_id: conversationId,
-    p_last_message_text: contentText || `[${contentType}]`,
+    p_last_message_text: previewText(contentType, contentText),
   })
   if (bumpError) {
     console.error('[unofficial/webhook] bump rpc error:', bumpError)
     // Fallback: update manually so the inbox sorts correctly
     await db.from('conversations').update({
-      last_message_text: contentText || `[${contentType}]`,
+      last_message_text: previewText(contentType, contentText),
       last_message_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq('id', conversationId)
