@@ -18,6 +18,8 @@ export interface ParsedMessage {
   reaction?: { targetId: string; emoji: string }
   /** Protocol/system messages that must not appear in the thread. */
   skip?: boolean
+  /** WhatsApp id of the quoted message when this one is a reply. */
+  quotedId?: string
 }
 
 export function unwrap(msg: Raw): Raw {
@@ -76,7 +78,22 @@ function pollText(poll: Raw): string {
   return [`📊 ${poll.name ?? 'Enquete'}`, ...options].join('\n')
 }
 
+/** WhatsApp id of the message this one replies to, if any. */
+function findQuotedId(msg: Raw): string | undefined {
+  for (const value of Object.values(msg)) {
+    const stanza = (value as Raw | null)?.contextInfo?.stanzaId
+    if (typeof stanza === 'string' && stanza) return stanza
+  }
+  return undefined
+}
+
 export function parseEvolutionMessage(raw: Raw): ParsedMessage {
+  const parsed = parseInner(raw)
+  const quotedId = findQuotedId(unwrap(raw))
+  return quotedId ? { ...parsed, quotedId } : parsed
+}
+
+function parseInner(raw: Raw): ParsedMessage {
   const msg = unwrap(raw)
 
   if (msg.reactionMessage) {

@@ -47,6 +47,7 @@ import {
   MessageComposer,
   CHAT_MEDIA_BUCKET,
   type SendMediaPayload,
+  type SendExtraPayload,
 } from "./message-composer";
 import { deleteAccountMedia } from "@/lib/storage/upload-media";
 import { TemplatePicker } from "./template-picker";
@@ -616,7 +617,7 @@ export function MessageThread({
       onNewMessage(optimisticMsg);
 
       try {
-        const res = await fetch("/api/whatsapp/send", {
+        const res = await fetch(sendEndpoint(conversation), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -640,6 +641,71 @@ export function MessageThread({
         onUpdateMessage(tempId, { status: "sent" });
       } catch (err) {
         console.error("Failed to send interactive message:", err);
+        const reason = err instanceof Error ? err.message : "network error";
+        toast.error(t("sendFailed", { reason }));
+        onUpdateMessage(tempId, { status: "failed" });
+      }
+    },
+    [conversation, onNewMessage, onUpdateMessage, t],
+  );
+
+  const handleSendExtra = useCallback(
+    async (payload: SendExtraPayload) => {
+      if (!conversation) return;
+
+      const tempId = `temp-${Date.now()}`;
+      const optimisticMsg: Message = {
+        id: tempId,
+        conversation_id: conversation.id,
+        sender_type: "agent",
+        content_type: payload.type === "sticker" ? "image" : "text",
+        content_text:
+          payload.type === "poll"
+            ? [`📊 ${payload.name}`, ...payload.options.map((o) => `○ ${o}`)].join("\n")
+            : payload.type === "contact"
+              ? `👤 ${payload.name}\n+${payload.phone.replace(/\D/g, "")}`
+              : undefined,
+        media_url: payload.type === "sticker" ? payload.mediaUrl : undefined,
+        status: "sending",
+        created_at: new Date().toISOString(),
+      };
+      onNewMessage(optimisticMsg);
+
+      const body =
+        payload.type === "poll"
+          ? {
+              message_type: "poll",
+              poll: {
+                name: payload.name,
+                options: payload.options,
+                selectable_count: payload.selectableCount,
+              },
+            }
+          : payload.type === "contact"
+            ? {
+                message_type: "contact",
+                contact: { name: payload.name, phone: payload.phone },
+              }
+            : { message_type: "sticker", media_url: payload.mediaUrl };
+
+      try {
+        const res = await fetch(sendEndpoint(conversation), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: conversation.id, ...body }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const reason = data?.error || `HTTP ${res.status}`;
+          toast.error(t("sendFailed", { reason }));
+          onUpdateMessage(tempId, { status: "failed" });
+          if (payload.type === "sticker") {
+            void deleteAccountMedia(CHAT_MEDIA_BUCKET, payload.path).catch(() => {});
+          }
+          return;
+        }
+        onUpdateMessage(tempId, { status: "sent" });
+      } catch (err) {
         const reason = err instanceof Error ? err.message : "network error";
         toast.error(t("sendFailed", { reason }));
         onUpdateMessage(tempId, { status: "failed" });
@@ -937,7 +1003,7 @@ export function MessageThread({
           <div className="min-w-0">
             <h2 className="truncate text-base text-[#111b21] dark:text-[#e9edef]">{displayName}</h2>
             <p className="truncate text-xs text-muted-foreground">
-              {contactHandle(contact)}
+              {conversation.group_jid ? t("group") : contactHandle(contact)}
             </p>
           </div>
           {/* Session timer badge — hidden on the narrowest phones so
@@ -1198,6 +1264,7 @@ export function MessageThread({
         onSend={handleSend}
         onSendMedia={handleSendMedia}
         onSendInteractive={handleSendInteractive}
+        onSendExtra={isUnofficial ? handleSendExtra : undefined}
         onOpenTemplates={handleOpenTemplates}
         replyTo={replyTo}
         onClearReply={() => setReplyTo(null)}

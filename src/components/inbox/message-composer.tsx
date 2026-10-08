@@ -21,8 +21,13 @@ import {
   Plus,
   MessageSquareDashed,
   Zap,
+  ListChecks,
+  UserRound,
+  Sticker,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { GatedButton } from "@/components/ui/gated-button";
 import {
   DropdownMenu,
@@ -81,6 +86,12 @@ export interface SendMediaPayload {
   replyToId?: string;
 }
 
+/** Extra message kinds only the unofficial (Evolution) channel can send. */
+export type SendExtraPayload =
+  | { type: "poll"; name: string; options: string[]; selectableCount: number }
+  | { type: "contact"; name: string; phone: string }
+  | { type: "sticker"; mediaUrl: string; path: string };
+
 interface ReplyDraft {
   /** Internal UUID of the message being replied to — sent back through onSend. */
   id: string;
@@ -114,6 +125,8 @@ interface MessageComposerProps {
   onSend: (text: string, replyToId?: string) => void;
   onSendMedia: (payload: SendMediaPayload) => void;
   onSendInteractive: (payload: InteractiveMessagePayload, replyToId?: string) => void;
+  /** Provided only for unofficial conversations: enables poll / contact / sticker. */
+  onSendExtra?: (payload: SendExtraPayload) => void;
   onOpenTemplates: () => void;
   replyTo?: ReplyDraft | null;
   onClearReply?: () => void;
@@ -136,11 +149,63 @@ export function MessageComposer({
   onSend,
   onSendMedia,
   onSendInteractive,
+  onSendExtra,
   onOpenTemplates,
   replyTo,
   onClearReply,
 }: MessageComposerProps) {
   const t = useTranslations("Inbox.composer");
+
+  // Poll / contact / sticker (unofficial channel only).
+  const [pollOpen, setPollOpen] = useState(false);
+  const [pollName, setPollName] = useState("");
+  const [pollOptions, setPollOptions] = useState(["", ""]);
+  const [pollMultiple, setPollMultiple] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const stickerInputRef = useRef<HTMLInputElement>(null);
+
+  const pollValidOptions = pollOptions.map((o) => o.trim()).filter(Boolean);
+  const pollValid = pollName.trim().length > 0 && pollValidOptions.length >= 2;
+  const contactValid =
+    contactName.trim().length > 0 && contactPhone.replace(/\D/g, "").length >= 8;
+
+  function submitPoll() {
+    if (!pollValid || !onSendExtra) return;
+    onSendExtra({
+      type: "poll",
+      name: pollName.trim(),
+      options: pollValidOptions,
+      selectableCount: pollMultiple ? pollValidOptions.length : 1,
+    });
+    setPollOpen(false);
+    setPollName("");
+    setPollOptions(["", ""]);
+    setPollMultiple(false);
+  }
+
+  function submitContact() {
+    if (!contactValid || !onSendExtra) return;
+    onSendExtra({ type: "contact", name: contactName.trim(), phone: contactPhone });
+    setContactOpen(false);
+    setContactName("");
+    setContactPhone("");
+  }
+
+  async function handleStickerPicked(file: File | undefined) {
+    if (!file || !onSendExtra) return;
+    if (file.type !== "image/webp") {
+      toast.error(t("stickerOnlyWebp"));
+      return;
+    }
+    try {
+      const { publicUrl, path } = await uploadAccountMedia(CHAT_MEDIA_BUCKET, file);
+      onSendExtra({ type: "sticker", mediaUrl: publicUrl, path });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed.");
+    }
+  }
 
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -665,6 +730,22 @@ export function MessageComposer({
                 <Mic className="mr-2 h-4 w-4" />
                 {t("voiceNote")}
               </DropdownMenuItem>
+              {onSendExtra && (
+                <>
+                  <DropdownMenuItem onClick={() => setPollOpen(true)}>
+                    <ListChecks className="mr-2 h-4 w-4" />
+                    {t("poll")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setContactOpen(true)}>
+                    <UserRound className="mr-2 h-4 w-4" />
+                    {t("contactCard")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => stickerInputRef.current?.click()}>
+                    <Sticker className="mr-2 h-4 w-4" />
+                    {t("sticker")}
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -787,6 +868,113 @@ export function MessageComposer({
       )}
 
       {/* Interactive-message builder dialog. */}
+      <input
+        ref={stickerInputRef}
+        type="file"
+        accept="image/webp"
+        className="hidden"
+        onChange={(e) => {
+          void handleStickerPicked(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
+
+      {/* Poll dialog */}
+      <Dialog open={pollOpen} onOpenChange={setPollOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("poll")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <Input
+              value={pollName}
+              onChange={(e) => setPollName(e.target.value)}
+              placeholder={t("pollQuestion")}
+              maxLength={255}
+              autoFocus
+            />
+            {pollOptions.map((opt, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Input
+                  value={opt}
+                  onChange={(e) =>
+                    setPollOptions((prev) => prev.map((o, j) => (j === i ? e.target.value : o)))
+                  }
+                  placeholder={t("pollOption", { n: i + 1 })}
+                  maxLength={100}
+                />
+                {pollOptions.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => setPollOptions((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label="remove"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+            {pollOptions.length < 12 && (
+              <button
+                type="button"
+                onClick={() => setPollOptions((prev) => [...prev, ""])}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                + {t("addOption")}
+              </button>
+            )}
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={pollMultiple}
+                onChange={(e) => setPollMultiple(e.target.checked)}
+              />
+              {t("pollMultiple")}
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPollOpen(false)}>
+              {t("cancel")}
+            </Button>
+            <Button onClick={submitPoll} disabled={!pollValid}>
+              {t("sendExtra")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contact dialog */}
+      <Dialog open={contactOpen} onOpenChange={setContactOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("contactCard")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <Input
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+              placeholder={t("contactName")}
+              autoFocus
+            />
+            <Input
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+              placeholder={t("contactPhone")}
+              inputMode="tel"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setContactOpen(false)}>
+              {t("cancel")}
+            </Button>
+            <Button onClick={submitContact} disabled={!contactValid}>
+              {t("sendExtra")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={interactiveOpen} onOpenChange={setInteractiveOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>

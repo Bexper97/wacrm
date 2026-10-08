@@ -80,6 +80,15 @@ function StatusIcon({
   }
 }
 
+const SENDER_COLORS = ["#1f7aec", "#c2410c", "#7c3aed", "#0f766e", "#be185d", "#a16207", "#047857", "#b91c1c"];
+
+/** Stable per-person colour for group sender names, like WhatsApp Web. */
+function senderColor(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return SENDER_COLORS[h % SENDER_COLORS.length];
+}
+
 /** A text message that is a map link with coordinates → location card data. */
 function parseMapLink(
   text?: string | null,
@@ -368,6 +377,14 @@ export function MessageBubble({
             : "rounded-tl-none bg-white text-[#111b21] dark:bg-[#202c33] dark:text-[#e9edef]",
         )}
       >
+        {!isAgent && message.sender_label && (
+          <p
+            className="mb-0.5 truncate text-xs font-medium"
+            style={{ color: senderColor(message.sender_jid ?? message.sender_label) }}
+          >
+            {message.sender_label}
+          </p>
+        )}
         {reply && (
           <ReplyQuote
             authorLabel={reply.authorLabel}

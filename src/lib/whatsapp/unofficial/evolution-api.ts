@@ -142,18 +142,46 @@ export interface SendResult {
 export async function sendText(
   instanceName: string,
   phone: string,
-  text: string
+  text: string,
+  quoted?: QuotedRef
 ): Promise<SendResult> {
   return callApi<SendResult>('POST', `/message/sendText/${instanceName}`, {
-    number: phone.replace(/^\+/, ''),
+    number: toNumber(phone),
     text,
+    ...(quoted ? { quoted: buildQuoted(quoted) } : {}),
   })
+}
+
+/** Recipient as Evolution expects it: plain digits for people, the full JID for groups. */
+export function toNumber(phoneOrJid: string): string {
+  return phoneOrJid.includes('@') ? phoneOrJid : phoneOrJid.replace(/^\+/, '')
+}
+
+/** The message being replied to. */
+export interface QuotedRef {
+  id: string
+  remoteJid: string
+  fromMe: boolean
+  participant?: string | null
+  text?: string | null
+}
+
+function buildQuoted(q: QuotedRef) {
+  return {
+    key: {
+      id: q.id,
+      remoteJid: q.remoteJid,
+      fromMe: q.fromMe,
+      ...(q.participant ? { participant: q.participant } : {}),
+    },
+    message: { conversation: q.text ?? '' },
+  }
 }
 
 /** React to a message. Empty `reaction` removes the reaction. */
 export async function sendReaction(
   instanceName: string,
-  key: { remoteJid: string; fromMe: boolean; id: string },
+  key: { remoteJid: string; fromMe: boolean; id: string; participant?: string },
   reaction: string
 ): Promise<unknown> {
   return callApi('POST', `/message/sendReaction/${instanceName}`, { key, reaction })
@@ -170,13 +198,136 @@ export async function sendMedia(
   mediaUrl: string,
   mediatype: MediaType,
   caption?: string,
-  filename?: string
+  filename?: string,
+  quoted?: QuotedRef
 ): Promise<SendResult> {
   return callApi<SendResult>('POST', `/message/sendMedia/${instanceName}`, {
-    number: phone.replace(/^\+/, ''),
+    number: toNumber(phone),
     mediatype,
     media: mediaUrl,
     caption,
     fileName: filename,
+    ...(quoted ? { quoted: buildQuoted(quoted) } : {}),
   })
+}
+
+/** Voice note (push-to-talk) — shows up as a playable voice message, not a file. */
+export async function sendVoice(
+  instanceName: string,
+  phone: string,
+  audioUrl: string,
+  quoted?: QuotedRef
+): Promise<SendResult> {
+  return callApi<SendResult>('POST', `/message/sendWhatsAppAudio/${instanceName}`, {
+    number: toNumber(phone),
+    audio: audioUrl,
+    ...(quoted ? { quoted: buildQuoted(quoted) } : {}),
+  })
+}
+
+export async function sendSticker(
+  instanceName: string,
+  phone: string,
+  stickerUrl: string,
+  quoted?: QuotedRef
+): Promise<SendResult> {
+  return callApi<SendResult>('POST', `/message/sendSticker/${instanceName}`, {
+    number: toNumber(phone),
+    sticker: stickerUrl,
+    ...(quoted ? { quoted: buildQuoted(quoted) } : {}),
+  })
+}
+
+export async function sendPoll(
+  instanceName: string,
+  phone: string,
+  name: string,
+  values: string[],
+  selectableCount = 1
+): Promise<SendResult> {
+  return callApi<SendResult>('POST', `/message/sendPoll/${instanceName}`, {
+    number: toNumber(phone),
+    name,
+    selectableCount,
+    values,
+  })
+}
+
+export async function sendContact(
+  instanceName: string,
+  phone: string,
+  contact: { fullName: string; phoneNumber: string }
+): Promise<SendResult> {
+  const digits = contact.phoneNumber.replace(/\D/g, '')
+  return callApi<SendResult>('POST', `/message/sendContact/${instanceName}`, {
+    number: toNumber(phone),
+    contact: [{ fullName: contact.fullName, wuid: digits, phoneNumber: `+${digits}` }],
+  })
+}
+
+export async function sendButtons(
+  instanceName: string,
+  phone: string,
+  payload: {
+    title: string
+    description: string
+    footer?: string
+    buttons: { id: string; title: string }[]
+  }
+): Promise<SendResult> {
+  return callApi<SendResult>('POST', `/message/sendButtons/${instanceName}`, {
+    number: toNumber(phone),
+    title: payload.title,
+    description: payload.description,
+    footer: payload.footer ?? '',
+    buttons: payload.buttons.map((b) => ({ type: 'reply', displayText: b.title, id: b.id })),
+  })
+}
+
+export async function sendList(
+  instanceName: string,
+  phone: string,
+  payload: {
+    title: string
+    description: string
+    footer?: string
+    buttonText: string
+    sections: { title?: string; rows: { id: string; title: string; description?: string }[] }[]
+  }
+): Promise<SendResult> {
+  return callApi<SendResult>('POST', `/message/sendList/${instanceName}`, {
+    number: toNumber(phone),
+    title: payload.title,
+    description: payload.description,
+    footerText: payload.footer ?? '',
+    buttonText: payload.buttonText,
+    values: payload.sections.map((s) => ({
+      title: s.title ?? '',
+      rows: s.rows.map((r) => ({
+        title: r.title,
+        description: r.description ?? '',
+        rowId: r.id,
+      })),
+    })),
+  })
+}
+
+export interface GroupInfo {
+  subject?: string
+  pictureUrl?: string | null
+}
+
+/** Group subject (name). Returns null when Evolution can't resolve it. */
+export async function getGroupInfo(
+  instanceName: string,
+  groupJid: string
+): Promise<GroupInfo | null> {
+  try {
+    return await callApi<GroupInfo>(
+      'GET',
+      `/group/findGroupInfos/${instanceName}?groupJid=${encodeURIComponent(groupJid)}`
+    )
+  } catch {
+    return null
+  }
 }

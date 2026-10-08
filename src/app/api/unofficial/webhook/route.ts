@@ -6,7 +6,7 @@ import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
-import { getMediaBase64 } from '@/lib/whatsapp/unofficial/evolution-api'
+import { getMediaBase64, getGroupInfo } from '@/lib/whatsapp/unofficial/evolution-api'
 import { parseEvolutionMessage, unwrap } from '@/lib/whatsapp/unofficial/parse-message'
 import { buildMediaPath, MEDIA_MAX_BYTES } from '@/lib/storage/upload-media'
 import {
@@ -157,9 +157,21 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
 
   // Newer WhatsApp versions may address chats by @lid; prefer the real phone JID when provided
   const rawJid: string = key.remoteJid ?? ''
+  const isGroup = rawJid.endsWith('@g.us')
   const jid = rawJid.endsWith('@lid') ? (key.remoteJidAlt ?? key.senderPn ?? rawJid) : rawJid
-  const phone = phoneFromJid(jid)
+  // A group has no phone number — its contact row is keyed by the group id digits.
+  const phone = isGroup
+    ? `+${rawJid.split('@')[0].replace(/\D/g, '')}`
+    : phoneFromJid(jid)
   if (!phone) { console.warn('[unofficial/webhook] invalid jid:', key.remoteJid); return }
+
+  const participantJid: string | null = isGroup
+    ? (key.participant ?? msgData.participant ?? null)
+    : null
+  const senderLabel: string | null =
+    isGroup && !fromMe
+      ? (msgData.pushName || (participantJid ? `+${participantJid.split('@')[0]}` : null))
+      : null
 
   const message = msgData.message
   if (!message) { console.warn('[unofficial/webhook] no message content'); return }
@@ -186,16 +198,38 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
 
   // Find or create contact
   let contactId: string
-  const existing = await findExistingContact(db, instanceRow.account_id, phone)
+  let groupConvContactId: string | null = null
+  if (isGroup) {
+    const { data: gc } = await db
+      .from('conversations')
+      .select('contact_id')
+      .eq('account_id', instanceRow.account_id)
+      .eq('group_jid', rawJid)
+      .limit(1)
+    groupConvContactId = gc?.[0]?.contact_id ?? null
+  }
+  const existing = groupConvContactId
+    ? { id: groupConvContactId, name: null as string | null }
+    : isGroup
+      ? null
+      : await findExistingContact(db, instanceRow.account_id, phone)
   if (existing) {
     contactId = existing.id
-    if (!fromMe && msgData.pushName && msgData.pushName !== existing.name) {
+    if (!isGroup && !fromMe && msgData.pushName && msgData.pushName !== existing.name) {
       await db.from('contacts').update({ name: msgData.pushName, updated_at: new Date().toISOString() }).eq('id', existing.id)
     }
   } else {
+    const groupName = isGroup
+      ? ((await getGroupInfo(instanceName, rawJid))?.subject ?? 'Grupo')
+      : null
     const { data: created, error: createErr } = await db
       .from('contacts')
-      .insert({ account_id: instanceRow.account_id, user_id: ownerUserId, phone, name: (!fromMe && msgData.pushName) || phone })
+      .insert({
+        account_id: instanceRow.account_id,
+        user_id: ownerUserId,
+        phone,
+        name: groupName ?? ((!fromMe && msgData.pushName) || phone),
+      })
       .select('id').single()
     if (createErr || !created) {
       if (isUniqueViolation(createErr)) {
@@ -240,6 +274,7 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
         contact_id: contactId,
         unofficial_instance_id: instanceRow.id,
         assigned_agent_id: instanceRow.owner_user_id ?? null,
+        ...(isGroup ? { group_jid: rawJid } : {}),
       })
       .select('id, status').single()
     if (convErr || !newConv) {
@@ -271,7 +306,7 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
     return
   }
 
-  if (conversationCreated && instanceRow.pipeline_stage_id && instanceRow.pipeline_id) {
+  if (conversationCreated && !isGroup && instanceRow.pipeline_stage_id && instanceRow.pipeline_id) {
     try {
       const { data: acct } = await db
         .from('accounts').select('default_currency').eq('id', instanceRow.account_id).maybeSingle()
@@ -320,6 +355,16 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
       mediaType = mirrored.mimeType
     }
   }
+  let replyToInternalId: string | null = null
+  if (parsed.quotedId) {
+    const { data: quotedRow } = await db
+      .from('messages')
+      .select('id')
+      .eq('conversation_id', conversationId)
+      .eq('message_id', parsed.quotedId)
+      .maybeSingle()
+    replyToInternalId = quotedRow?.id ?? null
+  }
   const ts = msgData.messageTimestamp
   const tsMs = typeof ts === 'number' ? ts * 1000 : parseInt(String(ts || Date.now())) * 1000
   const createdAt = isNaN(tsMs) ? new Date().toISOString() : new Date(tsMs).toISOString()
@@ -337,6 +382,8 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
       status: fromMe ? 'sent' : 'delivered',
       created_at: createdAt,
       ...(parsed.interactivePayload ? { interactive_payload: parsed.interactivePayload } : {}),
+      ...(replyToInternalId ? { reply_to_message_id: replyToInternalId } : {}),
+      ...(isGroup ? { sender_label: senderLabel, sender_jid: participantJid } : {}),
     })
     .select('id')
 
@@ -361,15 +408,17 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   }
 
   // Bump conversation (last_message_at + unread_count++)
+  const preview =
+    (isGroup && senderLabel ? `${senderLabel}: ` : '') + previewText(contentType, contentText)
   const { error: bumpError } = await db.rpc('bump_conversation_on_inbound', {
     p_conversation_id: conversationId,
-    p_last_message_text: previewText(contentType, contentText),
+    p_last_message_text: preview,
   })
   if (bumpError) {
     console.error('[unofficial/webhook] bump rpc error:', bumpError)
     // Fallback: update manually so the inbox sorts correctly
     await db.from('conversations').update({
-      last_message_text: previewText(contentType, contentText),
+      last_message_text: preview,
       last_message_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq('id', conversationId)
@@ -387,6 +436,14 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
     content_type: contentType,
     content_text: contentText,
     sender_type: 'customer' as const,
+  }
+
+  // Group chats never trigger bots: flows, automations and AI replies stay 1:1 only.
+  if (isGroup) {
+    dispatchWebhookEvent(db, instanceRow.account_id, 'message.received', {
+      conversation_id: conversationId, contact_id: contactId, message: messagePayload,
+    }).catch(e => console.error('[unofficial/webhook] webhook event error:', e))
+    return
   }
 
   // Flows, automations, AI — fire and forget individually so one failure doesn't block others
@@ -419,6 +476,40 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   dispatchWebhookEvent(db, instanceRow.account_id, 'message.received', {
     conversation_id: conversationId, contact_id: contactId, message: messagePayload,
   }).catch(e => console.error('[unofficial/webhook] webhook event error:', e))
+}
+
+// Baileys status codes: 2 SERVER_ACK, 3 DELIVERY_ACK, 4 READ, 5 PLAYED
+const STATUS_BY_NAME: Record<string, 'sent' | 'delivered' | 'read'> = {
+  SERVER_ACK: 'sent',
+  DELIVERY_ACK: 'delivered',
+  READ: 'read',
+  PLAYED: 'read',
+}
+const STATUS_BY_CODE: Record<number, 'sent' | 'delivered' | 'read'> = {
+  2: 'sent', 3: 'delivered', 4: 'read', 5: 'read',
+}
+const LOWER_STATUSES: Record<'sent' | 'delivered' | 'read', string[]> = {
+  sent: ['sending'],
+  delivered: ['sending', 'sent'],
+  read: ['sending', 'sent', 'delivered'],
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function applyDeliveryStatus(item: Record<string, any> | null | undefined) {
+  if (!item) return
+  const keyId: string | undefined = item.keyId ?? item.key?.id ?? item.messageId
+  const raw = item.status ?? item.update?.status
+  const next =
+    typeof raw === 'number' ? STATUS_BY_CODE[raw] : STATUS_BY_NAME[String(raw ?? '').toUpperCase()]
+  if (!keyId || !next) return
+
+  const { error } = await supabaseAdmin()
+    .from('messages')
+    .update({ status: next })
+    .eq('message_id', keyId)
+    .neq('sender_type', 'customer')
+    .in('status', LOWER_STATUSES[next])
+  if (error) console.error('[unofficial/webhook] status update error:', error.message)
 }
 
 export async function POST(request: Request) {
@@ -458,6 +549,12 @@ export async function POST(request: Request) {
             .eq('instance_name', instanceName)
           console.log('[unofficial/webhook] connection status updated:', instanceName, status)
         }
+        return
+      }
+
+      if (event === 'messages.update' || event === 'send.message.update') {
+        const items = Array.isArray(body.data) ? body.data : [body.data]
+        for (const item of items) await applyDeliveryStatus(item)
         return
       }
 

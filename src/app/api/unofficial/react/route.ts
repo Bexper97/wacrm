@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
     const { data: target } = await supabase
       .from('messages')
-      .select('id, message_id, conversation_id, sender_type')
+      .select('id, message_id, conversation_id, sender_type, sender_jid')
       .eq('id', message_id)
       .maybeSingle()
     if (!target) return NextResponse.json({ error: 'Message not found' }, { status: 404 })
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
     const { data: conv } = await supabase
       .from('conversations')
-      .select('id, contacts(phone), unofficial_wa_instances(instance_name)')
+      .select('id, group_jid, contacts(phone), unofficial_wa_instances(instance_name)')
       .eq('id', target.conversation_id)
       .eq('account_id', accountId)
       .maybeSingle()
@@ -48,8 +48,10 @@ export async function POST(request: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const phone = (conv as any).contacts?.phone as string | undefined
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const groupJid = (conv as any).group_jid as string | null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const instanceName = (conv as any).unofficial_wa_instances?.instance_name as string | undefined
-    if (!phone || !instanceName) {
+    if ((!phone && !groupJid) || !instanceName) {
       return NextResponse.json(
         { error: 'Esta conversa não está ligada a um número não oficial.' },
         { status: 400 },
@@ -60,9 +62,12 @@ export async function POST(request: Request) {
       await sendReaction(
         instanceName,
         {
-          remoteJid: `${phone.replace(/\D/g, '')}@s.whatsapp.net`,
+          remoteJid: groupJid ?? `${phone!.replace(/\D/g, '')}@s.whatsapp.net`,
           fromMe: target.sender_type !== 'customer',
           id: target.message_id,
+          ...(groupJid && target.sender_type === 'customer' && target.sender_jid
+            ? { participant: target.sender_jid }
+            : {}),
         },
         emoji,
       )

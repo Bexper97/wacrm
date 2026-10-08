@@ -176,6 +176,8 @@ export interface Conversation {
   assigned_agent_id?: string;
   /** Set when the thread came through an unofficial (Evolution API) number. */
   unofficial_instance_id?: string | null;
+  /** WhatsApp group id (…@g.us) when this thread is a group chat. */
+  group_jid?: string | null;
   /** Embedded number the thread came through (inbox select only). */
   unofficial_instance?: {
     id: string;
@@ -270,6 +272,9 @@ export interface Message {
    * 'interactive'` and `sender_type` is agent/bot. Migration 035.
    */
   interactive_payload?: InteractiveMessagePayload;
+  /** Group chats: who wrote this message (display name or +phone). */
+  sender_label?: string | null;
+  sender_jid?: string | null;
   /**
    * True when the AI auto-reply bot generated + sent this message (as
    * opposed to a human agent or a deterministic Flow/automation send,
