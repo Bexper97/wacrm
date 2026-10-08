@@ -48,12 +48,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
     }
 
-    const phone = (conv.contacts as { phone: string } | null)?.phone
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const phone = (conv as any).contacts?.phone as string | null | undefined
     if (!phone) {
       return NextResponse.json({ error: 'Contact has no phone number' }, { status: 400 })
     }
 
-    const instanceName = (conv.unofficial_wa_instances as { instance_name: string } | null)?.instance_name
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const instanceName = (conv as any).unofficial_wa_instances?.instance_name as string | null | undefined
     if (!instanceName) {
       return NextResponse.json(
         { error: 'This conversation has no unofficial WhatsApp instance linked. Open the conversation from a message received via an unofficial number.' },

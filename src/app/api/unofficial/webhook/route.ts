@@ -316,20 +316,44 @@ async function processInboundMessage(
     sender_type: 'customer' as const,
   }
 
-  await Promise.allSettled([
-    runAutomationsForTrigger(db, instance.account_id, 'message_received', {
+  const flowResult = await dispatchInboundToFlows({
+    accountId: instance.account_id,
+    userId: ownerUserId,
+    contactId,
+    conversationId,
+    message: {
+      kind: 'text' as const,
+      text: contentText ?? '',
+      meta_message_id: key.id,
+    },
+    isFirstInboundMessage: conversationCreated,
+  })
+
+  await runAutomationsForTrigger({
+    accountId: instance.account_id,
+    triggerType: 'new_message_received',
+    contactId,
+    context: {
+      message_text: contentText ?? '',
       conversation_id: conversationId,
-      contact_id: contactId,
-      message: messagePayload,
-    }),
-    dispatchInboundToFlows(db, instance.account_id, conversationId, contactId, messagePayload),
-    dispatchInboundToAiReply(db, instance.account_id, conversationId, messagePayload),
-    dispatchWebhookEvent(db, instance.account_id, 'message.received', {
-      conversation_id: conversationId,
-      contact_id: contactId,
-      message: messagePayload,
-    }),
-  ])
+    },
+  }).catch((err: unknown) => console.error('[unofficial/webhook] automations error:', err))
+
+  if (!flowResult.consumed && contentText?.trim()) {
+    await dispatchInboundToAiReply({
+      accountId: instance.account_id,
+      conversationId,
+      contactId,
+      configOwnerUserId: ownerUserId,
+      inboundMessageId: key.id,
+    })
+  }
+
+  await dispatchWebhookEvent(db, instance.account_id, 'message.received', {
+    conversation_id: conversationId,
+    contact_id: contactId,
+    message: messagePayload,
+  })
 }
 
 // ---------------------------------------------------------------------------
