@@ -150,6 +150,12 @@ const STATUS_OPTIONS: { label: string; value: ConversationStatus; color: string 
 const DOODLE_BG_CLASSES =
   "bg-background bg-[url('/inbox-doodle.svg')] bg-repeat";
 
+function sendEndpoint(conversation: { unofficial_instance_id?: string | null }) {
+  return conversation.unofficial_instance_id
+    ? "/api/unofficial/send"
+    : "/api/whatsapp/send";
+}
+
 export function MessageThread({
   conversation,
   contact,
@@ -485,7 +491,7 @@ export function MessageThread({
       setReplyTo(null);
 
       try {
-        const res = await fetch("/api/whatsapp/send", {
+        const res = await fetch(sendEndpoint(conversation), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -549,7 +555,7 @@ export function MessageThread({
       setReplyTo(null);
 
       try {
-        const res = await fetch("/api/whatsapp/send", {
+        const res = await fetch(sendEndpoint(conversation), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
