@@ -80,6 +80,57 @@ function StatusIcon({
   }
 }
 
+const MAP_W = 260;
+const MAP_H = 150;
+const MAP_ZOOM = 16;
+
+/** Static map built from OpenStreetMap tiles, centred on the point, with a pin. */
+function LocationMap({ lat, lng, href }: { lat: number; lng: number; href: string }) {
+  const n = 2 ** MAP_ZOOM;
+  const latRad = (lat * Math.PI) / 180;
+  const x = ((lng + 180) / 360) * n;
+  const y = ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
+  const tileX = Math.floor(x);
+  const tileY = Math.floor(y);
+  const offX = MAP_W / 2 - (x - tileX) * 256;
+  const offY = MAP_H / 2 - (y - tileY) * 256;
+
+  const tiles = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      tiles.push(
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={`${dx},${dy}`}
+          src={`https://tile.openstreetmap.org/${MAP_ZOOM}/${tileX + dx}/${tileY + dy}.png`}
+          alt=""
+          draggable={false}
+          width={256}
+          height={256}
+          className="absolute max-w-none select-none"
+          style={{ left: offX + dx * 256, top: offY + dy * 256 }}
+        />,
+      );
+    }
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="relative block overflow-hidden rounded-md bg-[#e5e3df]"
+      style={{ width: MAP_W, height: MAP_H, maxWidth: "100%" }}
+    >
+      {tiles}
+      <MapPin
+        className="absolute h-8 w-8 -translate-x-1/2 -translate-y-full fill-red-500 text-red-700 drop-shadow"
+        style={{ left: MAP_W / 2, top: MAP_H / 2 }}
+      />
+    </a>
+  );
+}
+
 function MessageContent({
   message,
   t,
@@ -192,26 +243,23 @@ function MessageContent({
       const lines = (message.content_text ?? "").split("\n").filter(Boolean);
       const mapUrl = lines.find((l) => /^https?:\/\//.test(l));
       const label = lines.filter((l) => l !== mapUrl);
+      const coords = mapUrl?.match(/q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
       return (
-        <div className="flex min-w-48 flex-col gap-1.5 text-sm">
-          <div className="flex h-24 items-center justify-center rounded-lg bg-black/10 dark:bg-white/10">
-            <MapPin className="h-8 w-8 text-red-500" />
-          </div>
-          <span className="break-words font-medium">
-            {label[0] || t("locationShared")}
-          </span>
+        <div className="flex flex-col gap-1 text-sm">
+          {coords ? (
+            <LocationMap
+              lat={parseFloat(coords[1])}
+              lng={parseFloat(coords[2])}
+              href={mapUrl!}
+            />
+          ) : (
+            <div className="flex h-24 items-center justify-center rounded-md bg-black/10 dark:bg-white/10">
+              <MapPin className="h-8 w-8 text-red-500" />
+            </div>
+          )}
+          {label[0] && <span className="break-words font-medium">{label[0]}</span>}
           {label[1] && (
             <span className="break-words text-xs opacity-80">{label[1]}</span>
-          )}
-          {mapUrl && (
-            <a
-              href={mapUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs font-medium text-sky-600 underline dark:text-sky-400"
-            >
-              Abrir no Google Maps
-            </a>
           )}
         </div>
       );

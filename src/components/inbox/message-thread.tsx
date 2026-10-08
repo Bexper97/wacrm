@@ -148,7 +148,7 @@ const STATUS_OPTIONS: { label: string; value: ConversationStatus; color: string 
  * if we ever switch the asset, both spots update together.
  */
 const DOODLE_BG_CLASSES =
-  "bg-[#efeae2] dark:bg-[#0b141a] bg-[url('/inbox-doodle.svg')] bg-repeat";
+  "bg-[#efeae2] bg-[linear-gradient(rgba(239,234,226,0.8),rgba(239,234,226,0.8)),url('/inbox-doodle.svg')] bg-repeat dark:bg-[#0b141a] dark:bg-[linear-gradient(rgba(11,20,26,0.82),rgba(11,20,26,0.82)),url('/inbox-doodle.svg')]";
 
 function sendEndpoint(conversation: { unofficial_instance_id?: string | null }) {
   return conversation.unofficial_instance_id
@@ -910,7 +910,7 @@ export function MessageThread({
     <div className={cn("flex min-w-0 flex-1 flex-col", DOODLE_BG_CLASSES)}>
       {/* Header — solid card surface sits on top of the doodle so the
           name/avatar/dropdowns stay legible. */}
-      <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4">
+      <div className="flex items-center justify-between gap-2 bg-white px-3 py-2.5 shadow-sm dark:bg-[#202c33] sm:px-4">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {/* Back-to-list button — mobile only. Hidden on lg+ where the
               conversation list is always visible next to the thread. */}
@@ -924,11 +924,11 @@ export function MessageThread({
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#dfe5e7] text-sm font-medium text-[#54656f] dark:bg-[#6a7175] dark:text-white">
             {displayName.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-foreground">{displayName}</h2>
+            <h2 className="truncate text-base text-[#111b21] dark:text-[#e9edef]">{displayName}</h2>
             <p className="truncate text-xs text-muted-foreground">
               {contactHandle(contact)}
             </p>

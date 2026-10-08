@@ -10,7 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
 import { Search, ChevronDown, X } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import {
@@ -232,11 +232,32 @@ export function ConversationList({
             value={search}
             onChange={handleSearchChange}
             placeholder={t("searchPlaceholder")}
-            className="border-border bg-muted pl-9 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
+            className="h-9 rounded-full border-0 bg-[#f0f2f5] pl-9 text-sm text-[#111b21] placeholder-[#667781] focus:border-0 dark:bg-[#202c33] dark:text-[#e9edef] dark:placeholder-[#8696a0]"
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {(["all", "unread"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setFilter(value)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-sm transition-colors",
+                filter === value
+                  ? "border-transparent bg-[#d9fdd3] text-[#008069] dark:bg-[#103529] dark:text-[#25d366]"
+                  : "border-[#e9edef] text-[#54656f] hover:bg-[#f5f6f6] dark:border-[#2a3942] dark:text-[#8696a0] dark:hover:bg-[#202c33]",
+              )}
+            >
+              {value === "all" ? t("filterAll") : t("filterUnread")}
+              {value === "unread" &&
+                conversations.filter((c) => c.unread_count > 0).length > 0 && (
+                  <span className="ml-1">
+                    {conversations.filter((c) => c.unread_count > 0).length}
+                  </span>
+                )}
+            </button>
+          ))}
           <DropdownMenu>
             <DropdownMenuTrigger className="inline-flex items-center justify-center h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground rounded-md hover:bg-muted">
                 {activeFilter?.label ?? t("filterAll")}
@@ -423,6 +444,19 @@ export function ConversationList({
   );
 }
 
+/** WhatsApp-style list timestamp: HH:mm today, "yesterday" (localised), else the date. */
+function formatListTime(date: Date): string {
+  if (isToday(date)) return format(date, "HH:mm");
+  if (isYesterday(date)) {
+    const word = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }).format(
+      -1,
+      "day",
+    );
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }
+  return format(date, "dd/MM/yyyy");
+}
+
 interface ConversationItemProps {
   conversation: Conversation;
   isActive: boolean;
@@ -445,16 +479,15 @@ function ConversationItem({
   }, [onSelect, conversation]);
 
   const timeAgo = conversation.last_message_at
-    ? formatDistanceToNow(new Date(conversation.last_message_at), {
-        addSuffix: false,
-      })
+    ? formatListTime(new Date(conversation.last_message_at))
     : "";
+  const hasUnread = conversation.unread_count > 0;
 
   return (
     <button
       onClick={handleClick}
       className={cn(
-        "flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-[#f5f6f6] dark:hover:bg-[#202c33]",
+        "mx-1.5 flex w-[calc(100%-0.75rem)] items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[#f5f6f6] dark:hover:bg-[#202c33]",
         isActive && "bg-[#f0f2f5] dark:bg-[#2a3942]"
       )}
     >
@@ -474,13 +507,22 @@ function ConversationItem({
       {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-medium text-foreground">
+          <span className="truncate text-base text-[#111b21] dark:text-[#e9edef]">
             {displayName}
           </span>
-          <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
+          <span
+            className={cn(
+              "shrink-0 text-xs",
+              hasUnread
+                ? "font-medium text-[#25d366]"
+                : "text-[#667781] dark:text-[#8696a0]",
+            )}
+          >
+            {timeAgo}
+          </span>
         </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">
-          <p className="truncate text-xs text-muted-foreground">
+          <p className="truncate text-sm text-[#667781] dark:text-[#8696a0]">
             {conversation.last_message_text || t("noMessagesYet")}
           </p>
           <div className="flex shrink-0 items-center gap-1.5">
