@@ -831,11 +831,16 @@ export function MessageThread({
       });
 
       try {
-        const res = await fetch("/api/whatsapp/react", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message_id: messageId, emoji }),
-        });
+        const res = await fetch(
+          conversation?.unofficial_instance_id
+            ? "/api/unofficial/react"
+            : "/api/whatsapp/react",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message_id: messageId, emoji }),
+          },
+        );
         if (!res.ok) {
           const payload = await res.json().catch(() => ({}));
           throw new Error(payload?.error || `HTTP ${res.status}`);

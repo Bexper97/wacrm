@@ -150,6 +150,15 @@ export async function sendText(
   })
 }
 
+/** React to a message. Empty `reaction` removes the reaction. */
+export async function sendReaction(
+  instanceName: string,
+  key: { remoteJid: string; fromMe: boolean; id: string },
+  reaction: string
+): Promise<unknown> {
+  return callApi('POST', `/message/sendReaction/${instanceName}`, { key, reaction })
+}
+
 export type MediaType = 'image' | 'video' | 'audio' | 'document'
 
 /**

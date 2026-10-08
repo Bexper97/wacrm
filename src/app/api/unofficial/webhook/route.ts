@@ -7,6 +7,7 @@ import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
 import { getMediaBase64 } from '@/lib/whatsapp/unofficial/evolution-api'
+import { parseEvolutionMessage, unwrap } from '@/lib/whatsapp/unofficial/parse-message'
 import { buildMediaPath, MEDIA_MAX_BYTES } from '@/lib/storage/upload-media'
 import {
   MIRROR_BUCKET,
@@ -36,64 +37,40 @@ function phoneFromJid(jid: string): string | null {
   return `+${digits}`
 }
 
-interface ParsedMessage {
-  contentType: string
-  contentText: string | null
-  mediaUrl: string | null
-  mediaType: string | null
-  fileName?: string | null
-  skip?: boolean
-}
+async function storeReaction(args: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any
+  conversationId: string
+  targetWaId: string
+  emoji: string
+  actorType: 'agent' | 'customer'
+  actorId: string
+}) {
+  if (!args.targetWaId) return
+  const { data: target } = await args.db
+    .from('messages')
+    .select('id')
+    .eq('conversation_id', args.conversationId)
+    .eq('message_id', args.targetWaId)
+    .maybeSingle()
+  if (!target) { console.warn('[unofficial/webhook] reaction target not found:', args.targetWaId); return }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function unwrap(msg: Record<string, any>): Record<string, any> {
-  const inner =
-    msg.ephemeralMessage?.message ??
-    msg.viewOnceMessage?.message ??
-    msg.viewOnceMessageV2?.message ??
-    msg.viewOnceMessageV2Extension?.message ??
-    msg.documentWithCaptionMessage?.message ??
-    msg.editedMessage?.message
-  return inner ? unwrap(inner) : msg
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseMessage(raw: Record<string, any>): ParsedMessage {
-  const msg = unwrap(raw)
-  const empty = { mediaUrl: null, mediaType: null }
-
-  if (msg.protocolMessage || msg.reactionMessage || msg.senderKeyDistributionMessage)
-    return { contentType: 'text', contentText: null, ...empty, skip: true }
-
-  const loc = msg.locationMessage ?? msg.liveLocationMessage
-  if (loc) {
-    const lat = loc.degreesLatitude
-    const lng = loc.degreesLongitude
-    const lines = [loc.name, loc.address].filter(Boolean) as string[]
-    lines.push(`https://www.google.com/maps?q=${lat},${lng}`)
-    return { contentType: 'location', contentText: lines.join('\n'), ...empty }
+  if (!args.emoji) {
+    await args.db.from('message_reactions').delete()
+      .eq('message_id', target.id).eq('actor_type', args.actorType).eq('actor_id', args.actorId)
+    return
   }
-
-  if (msg.contactMessage)
-    return { contentType: 'text', contentText: `👤 ${msg.contactMessage.displayName ?? 'Contato'}`, ...empty }
-  if (msg.contactsArrayMessage)
-    return { contentType: 'text', contentText: `👤 ${msg.contactsArrayMessage.displayName ?? 'Contatos'}`, ...empty }
-
-  if (msg.conversation)
-    return { contentType: 'text', contentText: msg.conversation, mediaUrl: null, mediaType: null }
-  if (msg.extendedTextMessage)
-    return { contentType: 'text', contentText: msg.extendedTextMessage.text, mediaUrl: null, mediaType: null }
-  if (msg.imageMessage)
-    return { contentType: 'image', contentText: msg.imageMessage.caption ?? null, mediaUrl: msg.imageMessage.url ?? null, mediaType: msg.imageMessage.mimetype ?? null }
-  if (msg.videoMessage)
-    return { contentType: 'video', contentText: msg.videoMessage.caption ?? null, mediaUrl: msg.videoMessage.url ?? null, mediaType: msg.videoMessage.mimetype ?? null }
-  if (msg.audioMessage)
-    return { contentType: 'audio', contentText: null, mediaUrl: msg.audioMessage.url ?? null, mediaType: msg.audioMessage.mimetype ?? null }
-  if (msg.documentMessage)
-    return { contentType: 'document', contentText: msg.documentMessage.caption ?? msg.documentMessage.fileName ?? null, mediaUrl: msg.documentMessage.url ?? null, mediaType: msg.documentMessage.mimetype ?? null }
-  if (msg.stickerMessage)
-    return { contentType: 'image', contentText: null, mediaUrl: msg.stickerMessage.url ?? null, mediaType: msg.stickerMessage.mimetype ?? null }
-  return { contentType: 'text', contentText: '[unsupported]', mediaUrl: null, mediaType: null }
+  const { error } = await args.db.from('message_reactions').upsert(
+    {
+      message_id: target.id,
+      conversation_id: args.conversationId,
+      actor_type: args.actorType,
+      actor_id: args.actorId,
+      emoji: args.emoji,
+    },
+    { onConflict: 'message_id,actor_type,actor_id' },
+  )
+  if (error) console.error('[unofficial/webhook] reaction upsert error:', error.message)
 }
 
 function previewText(contentType: string, contentText: string | null): string {
@@ -187,6 +164,9 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   const message = msgData.message
   if (!message) { console.warn('[unofficial/webhook] no message content'); return }
 
+  const parsed = parseEvolutionMessage(message)
+  if (parsed.skip) { console.log('[unofficial/webhook] skipping system message'); return }
+
   console.log('[unofficial/webhook] processing message from', phone, 'via', instanceName)
 
   // Resolve owner user
@@ -279,6 +259,18 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
     }
   }
 
+  if (parsed.reaction) {
+    await storeReaction({
+      db,
+      conversationId,
+      targetWaId: parsed.reaction.targetId,
+      emoji: parsed.reaction.emoji,
+      actorType: fromMe ? 'agent' : 'customer',
+      actorId: fromMe ? (instanceRow.owner_user_id ?? ownerUserId) : contactId,
+    })
+    return
+  }
+
   if (conversationCreated && instanceRow.pipeline_stage_id && instanceRow.pipeline_id) {
     try {
       const { data: acct } = await db
@@ -308,8 +300,6 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   }
 
   // Insert message
-  const parsed = parseMessage(message)
-  if (parsed.skip) { console.log('[unofficial/webhook] skipping non-content message'); return }
   const { contentType, contentText } = parsed
   let mediaType = parsed.mediaType
   let mediaUrl: string | null = null
@@ -346,6 +336,7 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
       message_id: key.id,
       status: fromMe ? 'sent' : 'delivered',
       created_at: createdAt,
+      ...(parsed.interactivePayload ? { interactive_payload: parsed.interactivePayload } : {}),
     })
     .select('id')
 
