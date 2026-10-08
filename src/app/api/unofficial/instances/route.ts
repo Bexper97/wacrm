@@ -24,6 +24,12 @@ function supabaseAdmin() {
 }
 
 function webhookUrl(): string {
+  // UNOFFICIAL_WA_WEBHOOK_URL allows overriding the webhook base URL —
+  // useful when Evolution API runs in Docker and can't reach the public IP.
+  // Example: http://172.17.0.1:3000 (Docker host bridge IP on Linux).
+  if (process.env.UNOFFICIAL_WA_WEBHOOK_URL) {
+    return process.env.UNOFFICIAL_WA_WEBHOOK_URL
+  }
   const base =
     process.env.NEXT_PUBLIC_APP_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
