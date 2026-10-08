@@ -77,8 +77,9 @@ export async function createInstance(opts: CreateInstanceOptions): Promise<unkno
     qrcode: true,
     integration: 'WHATSAPP-BAILEYS',
     webhook: {
+      enabled: true,
       url: opts.webhookUrl,
-      byEvents: true,
+      byEvents: false,
       base64: false,
       events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE'],
     },
@@ -90,7 +91,7 @@ export async function setWebhook(instanceName: string, webhookUrl: string): Prom
     webhook: {
       enabled: true,
       url: webhookUrl,
-      byEvents: true,
+      byEvents: false,
       base64: false,
       events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE'],
     },

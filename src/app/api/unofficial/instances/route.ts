@@ -9,7 +9,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireRole, toErrorResponse } from '@/lib/auth/account'
-import { createInstance } from '@/lib/whatsapp/unofficial/evolution-api'
+import { createInstance, setWebhook } from '@/lib/whatsapp/unofficial/evolution-api'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _admin: any = null
@@ -87,6 +87,12 @@ export async function POST(request: Request) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Evolution API error'
       return NextResponse.json({ error: message }, { status: 502 })
+    }
+
+    try {
+      await setWebhook(instanceName, webhookUrl())
+    } catch (err) {
+      console.error('[unofficial/instances POST] setWebhook failed:', err)
     }
 
     // Persist in DB (service role bypasses RLS — auth already verified above)

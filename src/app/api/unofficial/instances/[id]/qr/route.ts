@@ -6,7 +6,20 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireRole, toErrorResponse } from '@/lib/auth/account'
-import { getQrCode, getConnectionState } from '@/lib/whatsapp/unofficial/evolution-api'
+import {
+  getQrCode,
+  getConnectionState,
+  createInstance,
+  setWebhook,
+} from '@/lib/whatsapp/unofficial/evolution-api'
+
+function webhookUrl(): string {
+  if (process.env.UNOFFICIAL_WA_WEBHOOK_URL) return process.env.UNOFFICIAL_WA_WEBHOOK_URL
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  return `${base}/api/unofficial/webhook`
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _admin: any = null
@@ -36,13 +49,30 @@ export async function GET(_req: Request, { params }: Params) {
 
     if (!row) return NextResponse.json({ error: 'Instance not found' }, { status: 404 })
 
-    // Check live connection state
+    const hookUrl = webhookUrl()
+
+    // Check live connection state; recreate the instance if Evolution lost it
     let state: string
     try {
       const cs = await getConnectionState(row.instance_name)
       state = cs.instance?.state ?? 'close'
-    } catch {
+    } catch (err) {
       state = 'close'
+      const msg = err instanceof Error ? err.message : ''
+      if (/does not exist|404/i.test(msg)) {
+        try {
+          await createInstance({ instanceName: row.instance_name, webhookUrl: hookUrl })
+        } catch (createErr) {
+          console.error('[unofficial/qr] recreate failed:', createErr)
+        }
+      }
+    }
+
+    // Self-heal: always keep the webhook pointed at this CRM
+    try {
+      await setWebhook(row.instance_name, hookUrl)
+    } catch (err) {
+      console.error('[unofficial/qr] setWebhook failed:', err)
     }
 
     if (state === 'open') {
