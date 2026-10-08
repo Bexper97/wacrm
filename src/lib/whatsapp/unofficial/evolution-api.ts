@@ -87,10 +87,13 @@ export async function createInstance(opts: CreateInstanceOptions): Promise<unkno
 
 export async function setWebhook(instanceName: string, webhookUrl: string): Promise<unknown> {
   return callApi('POST', `/webhook/set/${instanceName}`, {
-    url: webhookUrl,
-    byEvents: true,
-    base64: false,
-    events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE'],
+    webhook: {
+      enabled: true,
+      url: webhookUrl,
+      byEvents: true,
+      base64: false,
+      events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE'],
+    },
   })
 }
 
