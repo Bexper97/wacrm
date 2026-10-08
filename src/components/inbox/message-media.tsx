@@ -234,7 +234,7 @@ export function MediaAudioBubble({
 
   return (
     <div className="flex items-center gap-2">
-      <audio src={message.media_url} controls className="max-w-60" />
+      <audio src={message.media_url} controls preload="metadata" className="h-10 w-64 max-w-full" />
       <MediaActionButton
         icon={Download}
         label={t("download")}

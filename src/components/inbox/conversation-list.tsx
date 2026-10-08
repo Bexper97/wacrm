@@ -223,7 +223,7 @@ export function ConversationList({
     // w-full on mobile so the list occupies the whole viewport when it's
     // the single pane showing; fixed 320px on desktop where it shares the
     // row with the thread + contact sidebar.
-    <div className="flex h-full w-full flex-col border-r border-border bg-card lg:w-80">
+    <div className="flex h-full w-full flex-col border-r border-border bg-white dark:bg-[#111b21] lg:w-96">
       {/* Search + Filter */}
       <div className="space-y-2 border-b border-border p-3">
         <div className="relative">
@@ -454,17 +454,17 @@ function ConversationItem({
     <button
       onClick={handleClick}
       className={cn(
-        "flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/50",
-        isActive && "border-l-2 border-primary bg-muted/70"
+        "flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-[#f5f6f6] dark:hover:bg-[#202c33]",
+        isActive && "bg-[#f0f2f5] dark:bg-[#2a3942]"
       )}
     >
       {/* Avatar */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#dfe5e7] text-base font-medium text-[#54656f] dark:bg-[#6a7175] dark:text-white">
         {contact?.avatar_url ? (
           <img
             src={contact.avatar_url}
             alt={displayName}
-            className="h-10 w-10 rounded-full object-cover"
+            className="h-12 w-12 rounded-full object-cover"
           />
         ) : (
           initials
@@ -485,7 +485,7 @@ function ConversationItem({
           </p>
           <div className="flex shrink-0 items-center gap-1.5">
             {conversation.unread_count > 0 && (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#25d366] px-1 text-[11px] font-semibold text-white dark:text-[#111b21]">
                 {conversation.unread_count}
               </span>
             )}

@@ -98,6 +98,23 @@ export async function setWebhook(instanceName: string, webhookUrl: string): Prom
   })
 }
 
+export interface MediaBase64Result {
+  base64?: string
+  mimetype?: string
+  fileName?: string
+}
+
+/** Asks Evolution to decrypt a received media message and return it as base64. */
+export async function getMediaBase64(
+  instanceName: string,
+  messageId: string
+): Promise<MediaBase64Result> {
+  return callApi<MediaBase64Result>('POST', `/chat/getBase64FromMediaMessage/${instanceName}`, {
+    message: { key: { id: messageId } },
+    convertToMp4: false,
+  })
+}
+
 export async function logoutInstance(instanceName: string): Promise<unknown> {
   return callApi('DELETE', `/instance/logout/${instanceName}`)
 }

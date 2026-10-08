@@ -148,7 +148,7 @@ const STATUS_OPTIONS: { label: string; value: ConversationStatus; color: string 
  * if we ever switch the asset, both spots update together.
  */
 const DOODLE_BG_CLASSES =
-  "bg-background bg-[url('/inbox-doodle.svg')] bg-repeat";
+  "bg-[#efeae2] dark:bg-[#0b141a] bg-[url('/inbox-doodle.svg')] bg-repeat";
 
 function sendEndpoint(conversation: { unofficial_instance_id?: string | null }) {
   return conversation.unofficial_instance_id
@@ -1108,12 +1108,12 @@ export function MessageThread({
               <div key={group.date}>
                 {/* Date separator */}
                 <div className="mb-4 flex items-center justify-center">
-                  <span className="rounded-full bg-muted px-3 py-1 text-[10px] font-medium text-muted-foreground">
+                  <span className="rounded-lg bg-white px-3 py-1 text-xs text-[#54656f] shadow-sm dark:bg-[#182229] dark:text-[#8696a0]">
                     {formatDateSeparator(group.date, t)}
                   </span>
                 </div>
                 {/* Messages */}
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {group.messages.map((msg) => {
                     const parent = msg.reply_to_message_id
                       ? messagesById.get(msg.reply_to_message_id)

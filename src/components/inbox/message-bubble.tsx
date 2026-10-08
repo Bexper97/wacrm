@@ -68,7 +68,7 @@ function StatusIcon({
     case "delivered":
       return <CheckCheck className="h-3 w-3 text-muted-foreground" />;
     case "read":
-      return <CheckCheck className="h-3 w-3 text-blue-400" />;
+      return <CheckCheck className="h-3 w-3 text-[#53bdeb]" />;
     case "failed":
       return (
         <span className="inline-flex" title={title ?? undefined}>
@@ -167,7 +167,7 @@ function MessageContent({
             className={cn(
               "mb-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
               isAgent
-                ? "bg-primary-foreground/20 text-primary-foreground"
+                ? "bg-black/10 dark:bg-white/15"
                 : "bg-primary/20 text-primary",
             )}
           >
@@ -188,13 +188,34 @@ function MessageContent({
         </div>
       );
 
-    case "location":
+    case "location": {
+      const lines = (message.content_text ?? "").split("\n").filter(Boolean);
+      const mapUrl = lines.find((l) => /^https?:\/\//.test(l));
+      const label = lines.filter((l) => l !== mapUrl);
       return (
-        <div className="flex items-center gap-2 text-sm">
-          <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <span>{message.content_text || t("locationShared")}</span>
+        <div className="flex min-w-48 flex-col gap-1.5 text-sm">
+          <div className="flex h-24 items-center justify-center rounded-lg bg-black/10 dark:bg-white/10">
+            <MapPin className="h-8 w-8 text-red-500" />
+          </div>
+          <span className="break-words font-medium">
+            {label[0] || t("locationShared")}
+          </span>
+          {label[1] && (
+            <span className="break-words text-xs opacity-80">{label[1]}</span>
+          )}
+          {mapUrl && (
+            <a
+              href={mapUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-medium text-sky-600 underline dark:text-sky-400"
+            >
+              Abrir no Google Maps
+            </a>
+          )}
         </div>
       );
+    }
 
     case "interactive": {
       // Three cases share content_type='interactive':
@@ -263,17 +284,17 @@ export function MessageBubble({
     >
       <div
         className={cn(
-          "relative rounded-2xl px-3 py-2",
+          "relative rounded-lg px-2.5 py-1.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]",
           isAgent
-            ? "rounded-br-md bg-primary text-primary-foreground"
-            : "rounded-bl-md bg-muted text-foreground",
+            ? "rounded-tr-none bg-[#d9fdd3] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef]"
+            : "rounded-tl-none bg-white text-[#111b21] dark:bg-[#202c33] dark:text-[#e9edef]",
         )}
       >
         {reply && (
           <ReplyQuote
             authorLabel={reply.authorLabel}
             preview={reply.preview}
-            onPrimary={isAgent}
+            onPrimary={false}
           />
         )}
         <MessageContent
@@ -294,7 +315,7 @@ export function MessageBubble({
               glance. */}
           {message.ai_generated && (
             <span
-              className="inline-flex items-center gap-0.5 rounded-full bg-primary-foreground/20 px-1.5 py-px text-[9px] font-semibold uppercase leading-none tracking-wide text-primary-foreground"
+              className="inline-flex items-center gap-0.5 rounded-full bg-black/10 px-1.5 py-px text-[9px] font-semibold uppercase leading-none tracking-wide dark:bg-white/15"
               title={t("aiBadgeTitle")}
             >
               <Sparkles className="h-2.5 w-2.5" />
@@ -308,7 +329,7 @@ export function MessageBubble({
               // timestamp must read against that (not the neutral
               // foreground) — otherwise it goes low-contrast in light
               // mode. Inbound bubbles use the muted surface.
-              isAgent ? "text-primary-foreground/70" : "text-muted-foreground",
+              "text-[#667781] dark:text-[#8696a0]",
             )}
           >
             {time}

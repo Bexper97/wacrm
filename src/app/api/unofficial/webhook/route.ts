@@ -6,6 +6,14 @@ import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
+import { getMediaBase64 } from '@/lib/whatsapp/unofficial/evolution-api'
+import { buildMediaPath, MEDIA_MAX_BYTES } from '@/lib/storage/upload-media'
+import {
+  MIRROR_BUCKET,
+  MIRROR_FOLDER,
+  mirrorFileName,
+  normalizeMimeType,
+} from '@/lib/whatsapp/mirror-inbound-media'
 
 export const maxDuration = 60
 
@@ -28,10 +36,49 @@ function phoneFromJid(jid: string): string | null {
   return `+${digits}`
 }
 
+interface ParsedMessage {
+  contentType: string
+  contentText: string | null
+  mediaUrl: string | null
+  mediaType: string | null
+  fileName?: string | null
+  skip?: boolean
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseMessage(msg: Record<string, any>): {
-  contentType: string; contentText: string | null; mediaUrl: string | null; mediaType: string | null
-} {
+function unwrap(msg: Record<string, any>): Record<string, any> {
+  const inner =
+    msg.ephemeralMessage?.message ??
+    msg.viewOnceMessage?.message ??
+    msg.viewOnceMessageV2?.message ??
+    msg.viewOnceMessageV2Extension?.message ??
+    msg.documentWithCaptionMessage?.message ??
+    msg.editedMessage?.message
+  return inner ? unwrap(inner) : msg
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseMessage(raw: Record<string, any>): ParsedMessage {
+  const msg = unwrap(raw)
+  const empty = { mediaUrl: null, mediaType: null }
+
+  if (msg.protocolMessage || msg.reactionMessage || msg.senderKeyDistributionMessage)
+    return { contentType: 'text', contentText: null, ...empty, skip: true }
+
+  const loc = msg.locationMessage ?? msg.liveLocationMessage
+  if (loc) {
+    const lat = loc.degreesLatitude
+    const lng = loc.degreesLongitude
+    const lines = [loc.name, loc.address].filter(Boolean) as string[]
+    lines.push(`https://www.google.com/maps?q=${lat},${lng}`)
+    return { contentType: 'location', contentText: lines.join('\n'), ...empty }
+  }
+
+  if (msg.contactMessage)
+    return { contentType: 'text', contentText: `👤 ${msg.contactMessage.displayName ?? 'Contato'}`, ...empty }
+  if (msg.contactsArrayMessage)
+    return { contentType: 'text', contentText: `👤 ${msg.contactsArrayMessage.displayName ?? 'Contatos'}`, ...empty }
+
   if (msg.conversation)
     return { contentType: 'text', contentText: msg.conversation, mediaUrl: null, mediaType: null }
   if (msg.extendedTextMessage)
@@ -47,6 +94,56 @@ function parseMessage(msg: Record<string, any>): {
   if (msg.stickerMessage)
     return { contentType: 'image', contentText: null, mediaUrl: msg.stickerMessage.url ?? null, mediaType: msg.stickerMessage.mimetype ?? null }
   return { contentType: 'text', contentText: '[unsupported]', mediaUrl: null, mediaType: null }
+}
+
+async function mirrorMedia(args: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any
+  accountId: string
+  instanceName: string
+  messageId: string
+  inlineBase64: string | null
+  mimeType: string | null
+  fileName: string | null
+  timestamp: unknown
+}): Promise<{ url: string; mimeType: string | null } | null> {
+  try {
+    let base64 = args.inlineBase64
+    let mime = normalizeMimeType(args.mimeType)
+    if (!base64) {
+      const res = await getMediaBase64(args.instanceName, args.messageId)
+      base64 = res.base64 ?? null
+      mime = normalizeMimeType(res.mimetype) ?? mime
+    }
+    if (!base64) { console.warn('[unofficial/webhook] no media base64 for', args.messageId); return null }
+
+    const buffer = Buffer.from(base64.replace(/^data:[^,]*,/, ''), 'base64')
+    if (buffer.byteLength > MEDIA_MAX_BYTES) {
+      console.warn('[unofficial/webhook] media too large:', buffer.byteLength)
+      return null
+    }
+
+    const uploadType = mime ?? 'application/octet-stream'
+    const name = mirrorFileName({
+      mediaId: args.messageId,
+      mimeType: uploadType,
+      fileName: args.fileName,
+      messageTimestamp: args.timestamp as string | number | null,
+    })
+    const path = buildMediaPath(args.accountId, name, null, MIRROR_FOLDER)
+    const { error } = await args.db.storage.from(MIRROR_BUCKET).upload(path, buffer, {
+      contentType: uploadType,
+      cacheControl: '3600',
+      upsert: true,
+    })
+    if (error) { console.warn('[unofficial/webhook] media upload failed:', error.message, uploadType); return null }
+
+    const { data } = args.db.storage.from(MIRROR_BUCKET).getPublicUrl(path)
+    return data?.publicUrl ? { url: data.publicUrl, mimeType: uploadType } : null
+  } catch (err) {
+    console.warn('[unofficial/webhook] media mirror error:', err instanceof Error ? err.message : err)
+    return null
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -167,7 +264,28 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   }
 
   // Insert message
-  const { contentType, contentText, mediaUrl, mediaType } = parseMessage(message)
+  const parsed = parseMessage(message)
+  if (parsed.skip) { console.log('[unofficial/webhook] skipping non-content message'); return }
+  const { contentType, contentText } = parsed
+  let mediaType = parsed.mediaType
+  let mediaUrl: string | null = null
+
+  if (['image', 'video', 'audio', 'document'].includes(contentType)) {
+    const mirrored = await mirrorMedia({
+      db,
+      accountId: instanceRow.account_id,
+      instanceName,
+      messageId: key.id,
+      inlineBase64: message.base64 ?? msgData.base64 ?? null,
+      mimeType: mediaType,
+      fileName: unwrap(message).documentMessage?.fileName ?? null,
+      timestamp: msgData.messageTimestamp,
+    })
+    if (mirrored) {
+      mediaUrl = mirrored.url
+      mediaType = mirrored.mimeType
+    }
+  }
   const ts = msgData.messageTimestamp
   const tsMs = typeof ts === 'number' ? ts * 1000 : parseInt(String(ts || Date.now())) * 1000
   const createdAt = isNaN(tsMs) ? new Date().toISOString() : new Date(tsMs).toISOString()
