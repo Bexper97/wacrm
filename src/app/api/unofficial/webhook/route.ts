@@ -194,15 +194,14 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
 
   console.log('[unofficial/webhook] message saved, id:', insertedRows[0].id)
 
-  // Bump conversation
-  try {
-    await db.rpc('bump_conversation_on_inbound', {
-      p_conversation_id: conversationId,
-      p_last_message_text: contentText || `[${contentType}]`,
-    })
-  } catch (e) {
-    console.error('[unofficial/webhook] bump rpc error:', e)
-    // Fallback manual update
+  // Bump conversation (last_message_at + unread_count++)
+  const { error: bumpError } = await db.rpc('bump_conversation_on_inbound', {
+    p_conversation_id: conversationId,
+    p_last_message_text: contentText || `[${contentType}]`,
+  })
+  if (bumpError) {
+    console.error('[unofficial/webhook] bump rpc error:', bumpError)
+    // Fallback: update manually so the inbox sorts correctly
     await db.from('conversations').update({
       last_message_text: contentText || `[${contentType}]`,
       last_message_at: new Date().toISOString(),
