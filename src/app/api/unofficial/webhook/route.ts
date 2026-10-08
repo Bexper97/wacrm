@@ -1,15 +1,4 @@
-/**
- * POST /api/unofficial/webhook
- *
- * Receives events from Evolution API and persists them into the CRM.
- * Supports multiple WhatsApp numbers: each instance maps to a row in
- * `unofficial_wa_instances`, which carries the account_id + label.
- *
- * Conversations are tagged with `unofficial_instance_id` so the inbox
- * can show which number a conversation came through.
- */
-
-import { NextResponse, after } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { findExistingContact, isUniqueViolation } from '@/lib/contacts/dedupe'
 import { reopenClosedConversation } from '@/lib/conversations/reopen'
@@ -32,43 +21,6 @@ function supabaseAdmin() {
   return _admin
 }
 
-// ---------------------------------------------------------------------------
-// Evolution API payload types
-// ---------------------------------------------------------------------------
-
-interface EvolutionKey {
-  remoteJid: string
-  fromMe: boolean
-  id: string
-}
-
-interface EvolutionMessageContent {
-  conversation?: string
-  extendedTextMessage?: { text: string }
-  imageMessage?: { url?: string; mimetype?: string; caption?: string }
-  videoMessage?: { url?: string; mimetype?: string; caption?: string }
-  audioMessage?: { url?: string; mimetype?: string }
-  documentMessage?: { url?: string; mimetype?: string; fileName?: string; caption?: string }
-  stickerMessage?: { url?: string; mimetype?: string }
-}
-
-interface EvolutionMessageData {
-  key: EvolutionKey
-  message?: EvolutionMessageContent
-  messageTimestamp?: number | string
-  pushName?: string
-}
-
-interface EvolutionEvent {
-  event: string
-  instance: string   // Evolution API instance name — used to look up our DB row
-  data: EvolutionMessageData | Record<string, unknown>
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function phoneFromJid(jid: string): string | null {
   if (!jid || jid.endsWith('@g.us') || jid.endsWith('@broadcast')) return null
   const digits = jid.split('@')[0]
@@ -76,11 +28,9 @@ function phoneFromJid(jid: string): string | null {
   return `+${digits}`
 }
 
-function parseEvolutionMessage(msg: EvolutionMessageContent): {
-  contentType: string
-  contentText: string | null
-  mediaUrl: string | null
-  mediaType: string | null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseMessage(msg: Record<string, any>): {
+  contentType: string; contentText: string | null; mediaUrl: string | null; mediaType: string | null
 } {
   if (msg.conversation)
     return { contentType: 'text', contentText: msg.conversation, mediaUrl: null, mediaType: null }
@@ -99,85 +49,81 @@ function parseEvolutionMessage(msg: EvolutionMessageContent): {
   return { contentType: 'text', contentText: '[unsupported]', mediaUrl: null, mediaType: null }
 }
 
-// ---------------------------------------------------------------------------
-// Resolve account from instance name
-// ---------------------------------------------------------------------------
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleMessage(instanceName: string, msgData: Record<string, any>) {
+  const db = supabaseAdmin()
 
-interface InstanceRow {
-  id: string
-  account_id: string
-  label: string
-}
-
-async function resolveInstance(instanceName: string): Promise<InstanceRow | null> {
-  const { data } = await supabaseAdmin()
+  // Resolve instance in DB
+  const { data: instanceRow } = await db
     .from('unofficial_wa_instances')
     .select('id, account_id, label')
     .eq('instance_name', instanceName)
     .maybeSingle()
-  return data ?? null
-}
 
-async function resolveOwnerUserId(accountId: string): Promise<string | null> {
-  const { data } = await supabaseAdmin()
+  if (!instanceRow) {
+    console.error('[unofficial/webhook] instance not found in DB:', instanceName)
+    return
+  }
+
+  const key = msgData.key
+  if (!key) { console.warn('[unofficial/webhook] no key in message data'); return }
+  if (key.fromMe) { console.log('[unofficial/webhook] skipping fromMe message'); return }
+
+  const phone = phoneFromJid(key.remoteJid)
+  if (!phone) { console.warn('[unofficial/webhook] invalid jid:', key.remoteJid); return }
+
+  const message = msgData.message
+  if (!message) { console.warn('[unofficial/webhook] no message content'); return }
+
+  console.log('[unofficial/webhook] processing message from', phone, 'via', instanceName)
+
+  // Resolve owner user
+  const { data: profileRow } = await db
     .from('profiles')
     .select('user_id')
-    .eq('account_id', accountId)
+    .eq('account_id', instanceRow.account_id)
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
-  return data?.user_id ?? null
-}
 
-// ---------------------------------------------------------------------------
-// Find-or-create contact + conversation
-// ---------------------------------------------------------------------------
+  if (!profileRow?.user_id) {
+    console.error('[unofficial/webhook] no owner user for account:', instanceRow.account_id)
+    return
+  }
+  const ownerUserId = profileRow.user_id
 
-async function resolveContactAndConversation(
-  accountId: string,
-  ownerUserId: string,
-  instanceId: string,
-  phone: string,
-  displayName?: string
-) {
-  const db = supabaseAdmin()
-
-  // Contact
+  // Find or create contact
   let contactId: string
-  const existing = await findExistingContact(db, accountId, phone)
+  const existing = await findExistingContact(db, instanceRow.account_id, phone)
   if (existing) {
     contactId = existing.id
-    if (displayName && displayName !== existing.name) {
-      await db
-        .from('contacts')
-        .update({ name: displayName, updated_at: new Date().toISOString() })
-        .eq('id', existing.id)
+    if (msgData.pushName && msgData.pushName !== existing.name) {
+      await db.from('contacts').update({ name: msgData.pushName, updated_at: new Date().toISOString() }).eq('id', existing.id)
     }
   } else {
     const { data: created, error: createErr } = await db
       .from('contacts')
-      .insert({ account_id: accountId, user_id: ownerUserId, phone, name: displayName || phone })
-      .select('id')
-      .single()
+      .insert({ account_id: instanceRow.account_id, user_id: ownerUserId, phone, name: msgData.pushName || phone })
+      .select('id').single()
     if (createErr || !created) {
       if (isUniqueViolation(createErr)) {
-        const raced = await findExistingContact(db, accountId, phone)
-        if (!raced) return null
+        const raced = await findExistingContact(db, instanceRow.account_id, phone)
+        if (!raced) { console.error('[unofficial/webhook] contact race failed'); return }
         contactId = raced.id
       } else {
         console.error('[unofficial/webhook] contact create error:', createErr)
-        return null
+        return
       }
     } else {
       contactId = created.id
     }
   }
 
-  // Conversation — one per (account, contact), tagged with the instance
+  // Find or create conversation
   const { data: convRows } = await db
     .from('conversations')
     .select('id, status')
-    .eq('account_id', accountId)
+    .eq('account_id', instanceRow.account_id)
     .eq('contact_id', contactId)
     .order('created_at', { ascending: true })
     .limit(1)
@@ -187,39 +133,23 @@ async function resolveContactAndConversation(
 
   if (convRows && convRows.length > 0) {
     conversationId = convRows[0].id
-    // Update instance tag if not set yet
-    await db
-      .from('conversations')
-      .update({ unofficial_instance_id: instanceId })
-      .eq('id', conversationId)
-      .is('unofficial_instance_id', null)
+    await db.from('conversations').update({ unofficial_instance_id: instanceRow.id })
+      .eq('id', conversationId).is('unofficial_instance_id', null)
   } else {
-    const { data: newConv, error: convCreateErr } = await db
+    const { data: newConv, error: convErr } = await db
       .from('conversations')
-      .insert({
-        account_id: accountId,
-        user_id: ownerUserId,
-        contact_id: contactId,
-        unofficial_instance_id: instanceId,
-      })
-      .select('id, status')
-      .single()
-
-    if (convCreateErr || !newConv) {
-      if (isUniqueViolation(convCreateErr)) {
-        const { data: raced } = await db
-          .from('conversations')
-          .select('id, status')
-          .eq('account_id', accountId)
-          .eq('contact_id', contactId)
-          .order('created_at', { ascending: true })
-          .limit(1)
-        if (raced && raced.length > 0) {
-          conversationId = raced[0].id
-        } else return null
+      .insert({ account_id: instanceRow.account_id, user_id: ownerUserId, contact_id: contactId, unofficial_instance_id: instanceRow.id })
+      .select('id, status').single()
+    if (convErr || !newConv) {
+      if (isUniqueViolation(convErr)) {
+        const { data: raced } = await db.from('conversations').select('id, status')
+          .eq('account_id', instanceRow.account_id).eq('contact_id', contactId)
+          .order('created_at', { ascending: true }).limit(1)
+        if (raced && raced.length > 0) { conversationId = raced[0].id }
+        else { console.error('[unofficial/webhook] conversation race failed'); return }
       } else {
-        console.error('[unofficial/webhook] conversation create error:', convCreateErr)
-        return null
+        console.error('[unofficial/webhook] conversation create error:', convErr)
+        return
       }
     } else {
       conversationId = newConv.id
@@ -227,83 +157,61 @@ async function resolveContactAndConversation(
     }
   }
 
-  return { contactId, conversationId, conversationCreated }
-}
-
-// ---------------------------------------------------------------------------
-// Process inbound message
-// ---------------------------------------------------------------------------
-
-async function processInboundMessage(
-  data: EvolutionMessageData,
-  instance: InstanceRow,
-  ownerUserId: string
-) {
-  const { key, message, messageTimestamp, pushName } = data
-  if (key.fromMe) return
-  const phone = phoneFromJid(key.remoteJid)
-  if (!phone || !message) return
-
-  const resolved = await resolveContactAndConversation(
-    instance.account_id,
-    ownerUserId,
-    instance.id,
-    phone,
-    pushName
-  )
-  if (!resolved) return
-
-  const { contactId, conversationId, conversationCreated } = resolved
-  const db = supabaseAdmin()
-
   if (conversationCreated) {
-    await dispatchWebhookEvent(db, instance.account_id, 'conversation.created', {
-      conversation_id: conversationId,
-      contact_id: contactId,
+    await dispatchWebhookEvent(db, instanceRow.account_id, 'conversation.created', {
+      conversation_id: conversationId, contact_id: contactId,
     })
   }
 
-  const { contentType, contentText, mediaUrl, mediaType } = parseEvolutionMessage(message)
-  const tsMs =
-    typeof messageTimestamp === 'number'
-      ? messageTimestamp * 1000
-      : parseInt(String(messageTimestamp)) * 1000
-  const createdAt = new Date(tsMs).toISOString()
+  // Insert message
+  const { contentType, contentText, mediaUrl, mediaType } = parseMessage(message)
+  const ts = msgData.messageTimestamp
+  const tsMs = typeof ts === 'number' ? ts * 1000 : parseInt(String(ts || Date.now())) * 1000
+  const createdAt = isNaN(tsMs) ? new Date().toISOString() : new Date(tsMs).toISOString()
 
   const { data: insertedRows, error: msgError } = await db
     .from('messages')
-    .upsert(
-      {
-        conversation_id: conversationId,
-        sender_type: 'customer',
-        content_type: contentType,
-        content_text: contentText,
-        media_url: mediaUrl,
-        media_type: mediaType,
-        message_id: key.id,
-        status: 'delivered',
-        created_at: createdAt,
-      },
-      { onConflict: 'conversation_id,message_id', ignoreDuplicates: true }
-    )
+    .insert({
+      conversation_id: conversationId,
+      sender_type: 'customer',
+      content_type: contentType,
+      content_text: contentText,
+      media_url: mediaUrl,
+      media_type: mediaType,
+      message_id: key.id,
+      status: 'delivered',
+      created_at: createdAt,
+    })
     .select('id')
 
   if (msgError) {
+    // Duplicate message — ignore silently
+    if (isUniqueViolation(msgError)) { console.log('[unofficial/webhook] duplicate message, skipping'); return }
     console.error('[unofficial/webhook] message insert error:', msgError)
     return
   }
-  if (!insertedRows || insertedRows.length === 0) return // replay
+  if (!insertedRows || insertedRows.length === 0) { console.warn('[unofficial/webhook] no rows inserted'); return }
 
-  await db.rpc('bump_conversation_on_inbound', {
-    p_conversation_id: conversationId,
-    p_last_message_text: contentText || `[${contentType}]`,
-  })
+  console.log('[unofficial/webhook] message saved, id:', insertedRows[0].id)
 
-  const { data: convRow } = await db
-    .from('conversations')
-    .select('id, status')
-    .eq('id', conversationId)
-    .single()
+  // Bump conversation
+  try {
+    await db.rpc('bump_conversation_on_inbound', {
+      p_conversation_id: conversationId,
+      p_last_message_text: contentText || `[${contentType}]`,
+    })
+  } catch (e) {
+    console.error('[unofficial/webhook] bump rpc error:', e)
+    // Fallback manual update
+    await db.from('conversations').update({
+      last_message_text: contentText || `[${contentType}]`,
+      last_message_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('id', conversationId)
+  }
+
+  // Reopen if closed
+  const { data: convRow } = await db.from('conversations').select('id, status').eq('id', conversationId).single()
   if (convRow) await reopenClosedConversation(db, convRow)
 
   const messagePayload = {
@@ -316,49 +224,37 @@ async function processInboundMessage(
     sender_type: 'customer' as const,
   }
 
-  const flowResult = await dispatchInboundToFlows({
-    accountId: instance.account_id,
+  // Flows, automations, AI — fire and forget individually so one failure doesn't block others
+  dispatchInboundToFlows({
+    accountId: instanceRow.account_id,
     userId: ownerUserId,
     contactId,
     conversationId,
-    message: {
-      kind: 'text' as const,
-      text: contentText ?? '',
-      meta_message_id: key.id,
-    },
+    message: { kind: 'text' as const, text: contentText ?? '', meta_message_id: key.id },
     isFirstInboundMessage: conversationCreated,
-  })
+  }).then(flowResult => {
+    if (!flowResult.consumed && contentText?.trim()) {
+      dispatchInboundToAiReply({
+        accountId: instanceRow.account_id,
+        conversationId,
+        contactId,
+        configOwnerUserId: ownerUserId,
+        inboundMessageId: key.id,
+      }).catch(e => console.error('[unofficial/webhook] ai reply error:', e))
+    }
+  }).catch(e => console.error('[unofficial/webhook] flows error:', e))
 
-  await runAutomationsForTrigger({
-    accountId: instance.account_id,
+  runAutomationsForTrigger({
+    accountId: instanceRow.account_id,
     triggerType: 'new_message_received',
     contactId,
-    context: {
-      message_text: contentText ?? '',
-      conversation_id: conversationId,
-    },
-  }).catch((err: unknown) => console.error('[unofficial/webhook] automations error:', err))
+    context: { message_text: contentText ?? '', conversation_id: conversationId },
+  }).catch(e => console.error('[unofficial/webhook] automations error:', e))
 
-  if (!flowResult.consumed && contentText?.trim()) {
-    await dispatchInboundToAiReply({
-      accountId: instance.account_id,
-      conversationId,
-      contactId,
-      configOwnerUserId: ownerUserId,
-      inboundMessageId: key.id,
-    })
-  }
-
-  await dispatchWebhookEvent(db, instance.account_id, 'message.received', {
-    conversation_id: conversationId,
-    contact_id: contactId,
-    message: messagePayload,
-  })
+  dispatchWebhookEvent(db, instanceRow.account_id, 'message.received', {
+    conversation_id: conversationId, contact_id: contactId, message: messagePayload,
+  }).catch(e => console.error('[unofficial/webhook] webhook event error:', e))
 }
-
-// ---------------------------------------------------------------------------
-// Route
-// ---------------------------------------------------------------------------
 
 export async function POST(request: Request) {
   const secret = process.env.UNOFFICIAL_WA_WEBHOOK_SECRET
@@ -371,43 +267,44 @@ export async function POST(request: Request) {
     }
   }
 
-  let body: EvolutionEvent
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let body: Record<string, any>
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  after(async () => {
+  const event = (body.event as string ?? '').toLowerCase().replace(/_/g, '.')
+  const instanceName = body.instance as string
+
+  console.log('[unofficial/webhook] event:', event, 'instance:', instanceName)
+
+  // Process asynchronously — PM2 keeps process alive so fire-and-forget is safe
+  setImmediate(async () => {
     try {
-      if (body.event === 'connection.update') {
-        // Sync connected/disconnected status to DB
-        const state = (body.data as Record<string, unknown>).state as string | undefined
+      if (event === 'connection.update') {
+        const state = (body.data as Record<string, unknown>)?.state as string | undefined
         if (state) {
-          const status =
-            state === 'open' ? 'connected' : state === 'connecting' ? 'connecting' : 'disconnected'
+          const status = state === 'open' ? 'connected' : state === 'connecting' ? 'connecting' : 'disconnected'
           await supabaseAdmin()
             .from('unofficial_wa_instances')
             .update({ status, updated_at: new Date().toISOString() })
-            .eq('instance_name', body.instance)
+            .eq('instance_name', instanceName)
+          console.log('[unofficial/webhook] connection status updated:', instanceName, status)
         }
         return
       }
 
-      if (body.event === 'messages.upsert') {
-        const instance = await resolveInstance(body.instance)
-        if (!instance) {
-          console.warn('[unofficial/webhook] unknown instance:', body.instance)
-          return
+      if (event === 'messages.upsert') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data = body.data as any
+        // Handle both array and object formats
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const messages: any[] = Array.isArray(data) ? data : Array.isArray(data?.messages) ? data.messages : [data]
+        for (const msgData of messages) {
+          await handleMessage(instanceName, msgData)
         }
-        const ownerUserId = await resolveOwnerUserId(instance.account_id)
-        if (!ownerUserId) return
-
-        await processInboundMessage(
-          body.data as EvolutionMessageData,
-          instance,
-          ownerUserId
-        )
       }
     } catch (err) {
       console.error('[unofficial/webhook] processing error:', err)
