@@ -312,6 +312,23 @@ export async function sendList(
   })
 }
 
+/** Profile picture URL of a contact or group (null when private / not set). */
+export async function fetchProfilePictureUrl(
+  instanceName: string,
+  numberOrJid: string
+): Promise<string | null> {
+  try {
+    const res = await callApi<{ profilePictureUrl?: string | null }>(
+      'POST',
+      `/chat/fetchProfilePictureUrl/${instanceName}`,
+      { number: toNumber(numberOrJid) }
+    )
+    return res.profilePictureUrl || null
+  } catch {
+    return null
+  }
+}
+
 export interface GroupInfo {
   subject?: string
   pictureUrl?: string | null

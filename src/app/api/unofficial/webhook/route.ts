@@ -7,6 +7,7 @@ import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
 import { getMediaBase64, getGroupInfo } from '@/lib/whatsapp/unofficial/evolution-api'
+import { refreshContactAvatar } from '@/lib/whatsapp/unofficial/avatars'
 import { parseEvolutionMessage, unwrap } from '@/lib/whatsapp/unofficial/parse-message'
 import { buildMediaPath, MEDIA_MAX_BYTES } from '@/lib/storage/upload-media'
 import {
@@ -397,6 +398,15 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   if (!insertedRows || insertedRows.length === 0) { console.warn('[unofficial/webhook] no rows inserted'); return }
 
   console.log('[unofficial/webhook] message saved, id:', insertedRows[0].id)
+
+  // Pull the contact's / group's profile photo in the background (once per day at most).
+  void refreshContactAvatar({
+    db,
+    accountId: instanceRow.account_id,
+    contactId,
+    instanceName,
+    target: isGroup ? rawJid : phone.replace(/\D/g, ''),
+  })
 
   // Sent from the phone itself: just refresh the preview — no unread bump, flows, automations or AI.
   if (fromMe) {

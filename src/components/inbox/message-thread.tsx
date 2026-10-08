@@ -997,8 +997,17 @@ export function MessageThread({
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#dfe5e7] text-sm font-medium text-[#54656f] dark:bg-[#6a7175] dark:text-white">
-            {displayName.charAt(0).toUpperCase()}
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#dfe5e7] text-sm font-medium text-[#54656f] dark:bg-[#6a7175] dark:text-white">
+            {contact.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={contact.avatar_url}
+                alt={displayName}
+                className="h-10 w-10 object-cover"
+              />
+            ) : (
+              displayName.charAt(0).toUpperCase()
+            )}
           </div>
           <div className="min-w-0">
             <h2 className="truncate text-base text-[#111b21] dark:text-[#e9edef]">{displayName}</h2>

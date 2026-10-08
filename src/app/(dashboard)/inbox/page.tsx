@@ -177,6 +177,29 @@ function InboxPageInner() {
     }
   }, []);
 
+  // Backfill WhatsApp profile photos for existing contacts, a batch at a time.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let anyUpdated = false;
+      for (let round = 0; round < 6 && !cancelled; round++) {
+        try {
+          const res = await fetch("/api/unofficial/avatars/sync", { method: "POST" });
+          if (!res.ok) break;
+          const data = (await res.json()) as { updated: number; remaining: number };
+          if (data.updated > 0) anyUpdated = true;
+          if (data.remaining === 0) break;
+        } catch {
+          break;
+        }
+      }
+      if (anyUpdated && !cancelled) setResyncToken((n) => n + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Check WhatsApp connection status on mount
   useEffect(() => {
     const checkConnection = async () => {
