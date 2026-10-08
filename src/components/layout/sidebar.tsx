@@ -29,6 +29,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { AccountRole } from "@/lib/auth/roles";
+import { ModeToggle } from "@/components/layout/mode-toggle";
 
 // Per-role chip metadata used in the sidebar's account strip + the
 // Members tab roster. Keeping this near both consumers in a single
@@ -362,6 +363,11 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             )}
             {!collapsed && <span>{t("collapseMenu")}</span>}
           </button>
+          {pathname.startsWith("/inbox") && (
+            <div className={cn("mt-1 flex", collapsed ? "justify-center" : "px-3")}>
+              <ModeToggle />
+            </div>
+          )}
         </div>
 
         {/* User section */}

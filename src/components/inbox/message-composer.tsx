@@ -10,7 +10,6 @@ import {
 import {
   Send,
   LayoutTemplate,
-  Paperclip,
   Image as ImageIcon,
   Video,
   FileText,
@@ -646,7 +645,7 @@ export function MessageComposer({
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Paperclip className="h-4 w-4" />
+                <Plus className="h-6 w-6" />
               )}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="border-border bg-popover">
@@ -683,7 +682,7 @@ export function MessageComposer({
               }
               className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Plus className="h-4 w-4" />
+              <Zap className="h-5 w-5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="border-border bg-popover">
               <DropdownMenuItem onClick={() => openInteractiveBuilder()}>
@@ -750,16 +749,31 @@ export function MessageComposer({
             )}
           />
 
-          <GatedButton
-            size="sm"
-            canAct={!readOnly}
-            gateReason="send messages"
-            disabled={!text.trim() || sessionExpired || sending}
-            onClick={handleSend}
-            className="h-9 w-9 shrink-0 rounded-full bg-[#00a884] p-0 text-white hover:bg-[#008f6f] disabled:opacity-40"
-          >
-            <Send className="h-4 w-4" />
-          </GatedButton>
+          {text.trim() ? (
+            <GatedButton
+              size="sm"
+              canAct={!readOnly}
+              gateReason="send messages"
+              disabled={sessionExpired || sending}
+              onClick={handleSend}
+              className="h-9 w-9 shrink-0 rounded-full bg-[#00a884] p-0 text-white hover:bg-[#008f6f] disabled:opacity-40"
+            >
+              <Send className="h-4 w-4" />
+            </GatedButton>
+          ) : (
+            <GatedButton
+              size="sm"
+              variant="ghost"
+              canAct={!readOnly}
+              gateReason="send messages"
+              disabled={sessionExpired || busy}
+              title={t("voiceNote")}
+              onClick={() => void startRecording()}
+              className="h-9 w-9 shrink-0 rounded-full p-0 text-[#54656f] hover:bg-muted dark:text-[#aebac1]"
+            >
+              <Mic className="h-5 w-5" />
+            </GatedButton>
+          )}
         </div>
       )}
 

@@ -53,7 +53,7 @@ export async function GET() {
 
     const { data, error } = await supabaseAdmin()
       .from('unofficial_wa_instances')
-      .select('id, instance_name, label, phone, status, created_at')
+      .select('id, instance_name, label, phone, status, created_at, owner_user_id, pipeline_id, pipeline_stage_id')
       .eq('account_id', accountId)
       .order('created_at', { ascending: true })
 

@@ -38,6 +38,9 @@ interface Instance {
   label: string;
   phone: string | null;
   status: 'connected' | 'disconnected' | 'connecting';
+  owner_user_id?: string | null;
+  pipeline_id?: string | null;
+  pipeline_stage_id?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -255,6 +258,13 @@ function AddInstanceModal({
 // Rename modal
 // ---------------------------------------------------------------------------
 
+interface MemberOption { user_id: string; full_name: string }
+interface StageOption { id: string; name: string; position: number }
+interface PipelineOption { id: string; name: string; pipeline_stages: StageOption[] }
+
+const SELECT_CLASS =
+  'h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground';
+
 function RenameModal({
   instance,
   open,
@@ -264,12 +274,44 @@ function RenameModal({
   instance: Instance | null;
   open: boolean;
   onClose: () => void;
-  onRenamed: (id: string, label: string) => void;
+  onRenamed: (id: string, patch: Partial<Instance>) => void;
 }) {
   const [label, setLabel] = useState('');
+  const [ownerId, setOwnerId] = useState('');
+  const [stageId, setStageId] = useState('');
+  const [members, setMembers] = useState<MemberOption[]>([]);
+  const [pipelines, setPipelines] = useState<PipelineOption[]>([]);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (instance) setLabel(instance.label); }, [instance]);
+  useEffect(() => {
+    if (!instance) return;
+    setLabel(instance.label);
+    setOwnerId(instance.owner_user_id ?? '');
+    setStageId(instance.pipeline_stage_id ?? '');
+  }, [instance]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/account/members');
+        const data = await res.json();
+        if (!cancelled) setMembers(data.members ?? []);
+      } catch {
+        /* optional */
+      }
+      const { createClient } = await import('@/lib/supabase/client');
+      const { data } = await createClient()
+        .from('pipelines')
+        .select('id, name, pipeline_stages(id, name, position)')
+        .order('created_at');
+      if (!cancelled) setPipelines((data as PipelineOption[] | null) ?? []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   async function handleSave() {
     if (!instance) return;
@@ -280,15 +322,27 @@ function RenameModal({
       const res = await fetch(`/api/unofficial/instances/${instance.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: trimmed }),
+        body: JSON.stringify({
+          label: trimmed,
+          owner_user_id: ownerId || null,
+          pipeline_stage_id: stageId || null,
+        }),
       });
       if (res.ok) {
-        onRenamed(instance.id, trimmed);
+        const pipeline = pipelines.find((p) =>
+          p.pipeline_stages.some((s) => s.id === stageId),
+        );
+        onRenamed(instance.id, {
+          label: trimmed,
+          owner_user_id: ownerId || null,
+          pipeline_stage_id: stageId || null,
+          pipeline_id: stageId ? (pipeline?.id ?? null) : null,
+        });
         onClose();
-        toast.success('Nome atualizado');
+        toast.success('Número atualizado');
       } else {
         const data = await res.json();
-        toast.error(data.error ?? 'Erro ao renomear');
+        toast.error(data.error ?? 'Erro ao salvar');
       }
     } catch {
       toast.error('Erro de rede');
@@ -299,20 +353,71 @@ function RenameModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Renomear número</DialogTitle>
+          <DialogTitle>Editar número</DialogTitle>
+          <DialogDescription>
+            Defina quem atende este número e, se quiser, em qual coluna do funil
+            os novos contatos entram.
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2 py-2">
-          <Label htmlFor="rename-label">Novo nome</Label>
-          <Input
-            id="rename-label"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-            disabled={saving}
-            autoFocus
-          />
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label htmlFor="rename-label">Nome do número</Label>
+            <Input
+              id="rename-label"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              disabled={saving}
+              autoFocus
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="owner-select">Consultor responsável</Label>
+            <select
+              id="owner-select"
+              className={SELECT_CLASS}
+              value={ownerId}
+              onChange={(e) => setOwnerId(e.target.value)}
+              disabled={saving}
+            >
+              <option value="">Ninguém (sem atribuição automática)</option>
+              {members.map((m) => (
+                <option key={m.user_id} value={m.user_id}>
+                  {m.full_name || m.user_id.slice(0, 8)}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              As conversas deste número ficam atribuídas a essa pessoa.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="stage-select">Coluna do funil para novos contatos</Label>
+            <select
+              id="stage-select"
+              className={SELECT_CLASS}
+              value={stageId}
+              onChange={(e) => setStageId(e.target.value)}
+              disabled={saving}
+            >
+              <option value="">Não criar negócio automaticamente</option>
+              {pipelines.map((p) => (
+                <optgroup key={p.id} label={p.name}>
+                  {[...p.pipeline_stages]
+                    .sort((a, b) => a.position - b.position)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Crie uma coluna com o nome do consultor em Funis e escolha aqui.
+            </p>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
@@ -366,8 +471,8 @@ export function UnofficialWaConnections() {
     setQrTarget(null);
   }
 
-  function handleRenamed(id: string, label: string) {
-    setInstances((prev) => prev.map((i) => (i.id === id ? { ...i, label } : i)));
+  function handleRenamed(id: string, patch: Partial<Instance>) {
+    setInstances((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
   }
 
   async function handleDelete(instance: Instance) {
@@ -464,7 +569,7 @@ export function UnofficialWaConnections() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  title="Renomear"
+                  title="Editar (nome, consultor, funil)"
                   onClick={() => setRenameTarget(inst)}
                 >
                   <Pencil className="h-4 w-4" />

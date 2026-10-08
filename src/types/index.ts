@@ -176,6 +176,12 @@ export interface Conversation {
   assigned_agent_id?: string;
   /** Set when the thread came through an unofficial (Evolution API) number. */
   unofficial_instance_id?: string | null;
+  /** Embedded number the thread came through (inbox select only). */
+  unofficial_instance?: {
+    id: string;
+    label: string;
+    phone: string | null;
+  } | null;
   last_message_text?: string;
   last_message_at?: string;
   unread_count: number;

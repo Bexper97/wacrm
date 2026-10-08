@@ -1,5 +1,5 @@
 /**
- * PATCH  /api/unofficial/instances/[id]  — rename label
+ * PATCH  /api/unofficial/instances/[id]  — rename, set responsible consultant, set funnel stage
  * DELETE /api/unofficial/instances/[id]  — disconnect and remove
  */
 
@@ -25,19 +25,88 @@ interface Params { params: Promise<{ id: string }> }
 export async function PATCH(request: Request, { params }: Params) {
   try {
     const { id } = await params
-    const { accountId } = await requireRole('agent')
-
     const body = await request.json()
-    const label: string = (body.label ?? '').trim()
-    if (!label) return NextResponse.json({ error: 'label is required' }, { status: 400 })
+    const touchesRouting =
+      'owner_user_id' in body || 'pipeline_id' in body || 'pipeline_stage_id' in body
+    const { accountId } = await requireRole(touchesRouting ? 'admin' : 'agent')
+    const db = supabaseAdmin()
 
-    const { error } = await supabaseAdmin()
+    const { data: current } = await db
       .from('unofficial_wa_instances')
-      .update({ label, updated_at: new Date().toISOString() })
+      .select('id, owner_user_id')
       .eq('id', id)
       .eq('account_id', accountId)
+      .maybeSingle()
+    if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    if (error) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
+
+    if ('label' in body) {
+      const label: string = (body.label ?? '').trim()
+      if (!label) return NextResponse.json({ error: 'label is required' }, { status: 400 })
+      patch.label = label
+    }
+
+    if ('owner_user_id' in body) {
+      const owner: string | null = body.owner_user_id || null
+      if (owner) {
+        const { data: member } = await db
+          .from('profiles')
+          .select('user_id')
+          .eq('user_id', owner)
+          .eq('account_id', accountId)
+          .maybeSingle()
+        if (!member) return NextResponse.json({ error: 'User is not in this account' }, { status: 400 })
+      }
+      patch.owner_user_id = owner
+    }
+
+    if ('pipeline_stage_id' in body) {
+      const stageId: string | null = body.pipeline_stage_id || null
+      if (stageId) {
+        const { data: stage } = await db
+          .from('pipeline_stages')
+          .select('id, pipeline_id, pipelines!inner(account_id)')
+          .eq('id', stageId)
+          .maybeSingle()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const stageAccount = (stage as any)?.pipelines?.account_id
+        if (!stage || stageAccount !== accountId) {
+          return NextResponse.json({ error: 'Invalid pipeline stage' }, { status: 400 })
+        }
+        patch.pipeline_stage_id = stageId
+        patch.pipeline_id = stage.pipeline_id
+      } else {
+        patch.pipeline_stage_id = null
+        patch.pipeline_id = null
+      }
+    }
+
+    const { error } = await db
+      .from('unofficial_wa_instances')
+      .update(patch)
+      .eq('id', id)
+      .eq('account_id', accountId)
+    if (error) return NextResponse.json({ error: 'Update failed' }, { status: 500 })
+
+    // New responsible consultant takes over this number's threads that were
+    // unassigned or still assigned to the previous consultant.
+    if ('owner_user_id' in patch && patch.owner_user_id) {
+      const newOwner = patch.owner_user_id as string
+      await db
+        .from('conversations')
+        .update({ assigned_agent_id: newOwner })
+        .eq('unofficial_instance_id', id)
+        .is('assigned_agent_id', null)
+      if (current.owner_user_id && current.owner_user_id !== newOwner) {
+        await db
+          .from('conversations')
+          .update({ assigned_agent_id: newOwner })
+          .eq('unofficial_instance_id', id)
+          .eq('assigned_agent_id', current.owner_user_id)
+      }
+    }
+
     return NextResponse.json({ success: true })
   } catch (err) {
     return toErrorResponse(err)

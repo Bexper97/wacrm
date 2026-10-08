@@ -165,7 +165,7 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   // Resolve instance in DB
   const { data: instanceRow } = await db
     .from('unofficial_wa_instances')
-    .select('id, account_id, label')
+    .select('id, account_id, label, owner_user_id, pipeline_id, pipeline_stage_id')
     .eq('instance_name', instanceName)
     .maybeSingle()
 
@@ -234,7 +234,7 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   // Find or create conversation
   const { data: convRows } = await db
     .from('conversations')
-    .select('id, status')
+    .select('id, status, assigned_agent_id')
     .eq('account_id', instanceRow.account_id)
     .eq('contact_id', contactId)
     .order('created_at', { ascending: true })
@@ -247,10 +247,20 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
     conversationId = convRows[0].id
     await db.from('conversations').update({ unofficial_instance_id: instanceRow.id })
       .eq('id', conversationId).is('unofficial_instance_id', null)
+    if (instanceRow.owner_user_id && !convRows[0].assigned_agent_id) {
+      await db.from('conversations').update({ assigned_agent_id: instanceRow.owner_user_id })
+        .eq('id', conversationId).is('assigned_agent_id', null)
+    }
   } else {
     const { data: newConv, error: convErr } = await db
       .from('conversations')
-      .insert({ account_id: instanceRow.account_id, user_id: ownerUserId, contact_id: contactId, unofficial_instance_id: instanceRow.id })
+      .insert({
+        account_id: instanceRow.account_id,
+        user_id: ownerUserId,
+        contact_id: contactId,
+        unofficial_instance_id: instanceRow.id,
+        assigned_agent_id: instanceRow.owner_user_id ?? null,
+      })
       .select('id, status').single()
     if (convErr || !newConv) {
       if (isUniqueViolation(convErr)) {
@@ -266,6 +276,28 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
     } else {
       conversationId = newConv.id
       conversationCreated = true
+    }
+  }
+
+  if (conversationCreated && instanceRow.pipeline_stage_id && instanceRow.pipeline_id) {
+    try {
+      const { data: acct } = await db
+        .from('accounts').select('default_currency').eq('id', instanceRow.account_id).maybeSingle()
+      const { error: dealErr } = await db.from('deals').insert({
+        account_id: instanceRow.account_id,
+        user_id: instanceRow.owner_user_id ?? ownerUserId,
+        pipeline_id: instanceRow.pipeline_id,
+        stage_id: instanceRow.pipeline_stage_id,
+        contact_id: contactId,
+        conversation_id: conversationId,
+        title: msgData.pushName && !fromMe ? msgData.pushName : phone,
+        value: 0,
+        currency: acct?.default_currency ?? 'BRL',
+        status: 'open',
+      })
+      if (dealErr) console.error('[unofficial/webhook] auto-deal error:', dealErr)
+    } catch (e) {
+      console.error('[unofficial/webhook] auto-deal exception:', e)
     }
   }
 

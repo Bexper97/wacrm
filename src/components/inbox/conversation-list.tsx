@@ -72,6 +72,38 @@ export function ConversationList({
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  // Per-number and per-consultant filters. Assignee: a user id, "none", or null (all).
+  const [instanceFilter, setInstanceFilter] = useState<string | null>(null);
+  const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
+  const [members, setMembers] = useState<{ user_id: string; full_name: string | null }[]>([]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("profiles").select("user_id, full_name");
+      if (!cancelled && data) setMembers(data);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const memberName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of members) m.set(p.user_id, p.full_name || "");
+    return m;
+  }, [members]);
+
+  const instanceOptions = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of conversations) {
+      if (c.unofficial_instance) m.set(c.unofficial_instance.id, c.unofficial_instance.label);
+    }
+    return Array.from(m, ([id, label]) => ({ id, label })).sort((a, b) =>
+      a.label.localeCompare(b.label),
+    );
+  }, [conversations]);
 
   // Keep the latest callback in a ref so the fetch effect below can
   // have a stable, empty-dep identity. Previously the fetch useCallback
@@ -177,18 +209,45 @@ export function ConversationList({
       );
     }
 
+    if (instanceFilter) {
+      result = result.filter((c) => c.unofficial_instance_id === instanceFilter);
+    }
+
+    if (assigneeFilter === "none") {
+      result = result.filter((c) => !c.assigned_agent_id);
+    } else if (assigneeFilter) {
+      result = result.filter((c) => c.assigned_agent_id === assigneeFilter);
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((c) => {
         const name = c.contact?.name?.toLowerCase() ?? "";
         const phone = c.contact?.phone?.toLowerCase() ?? "";
         const lastMsg = c.last_message_text?.toLowerCase() ?? "";
-        return name.includes(q) || phone.includes(q) || lastMsg.includes(q);
+        const numberLabel = c.unofficial_instance?.label?.toLowerCase() ?? "";
+        const agent = memberName.get(c.assigned_agent_id ?? "")?.toLowerCase() ?? "";
+        return (
+          name.includes(q) ||
+          phone.includes(q) ||
+          lastMsg.includes(q) ||
+          numberLabel.includes(q) ||
+          agent.includes(q)
+        );
       });
     }
 
     return result;
-  }, [conversations, filter, search, selectedTagIds, selectedCompany]);
+  }, [
+    conversations,
+    filter,
+    search,
+    selectedTagIds,
+    selectedCompany,
+    instanceFilter,
+    assigneeFilter,
+    memberName,
+  ]);
 
   const toggleTag = useCallback((id: string) => {
     setSelectedTagIds((prev) =>
@@ -326,6 +385,73 @@ export function ConversationList({
             </DropdownMenu>
           )}
 
+          {instanceOptions.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(
+                  "inline-flex max-w-40 items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
+                  instanceFilter ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className="truncate">
+                  {instanceOptions.find((i) => i.id === instanceFilter)?.label ?? t("number")}
+                </span>
+                <ChevronDown className="h-3 w-3 shrink-0" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-h-72 w-56 border-border bg-popover">
+                <DropdownMenuItem onClick={() => setInstanceFilter(null)} className="text-sm">
+                  {t("allNumbers")}
+                </DropdownMenuItem>
+                {instanceOptions.map((i) => (
+                  <DropdownMenuItem
+                    key={i.id}
+                    onClick={() => setInstanceFilter(i.id)}
+                    className={cn("text-sm", instanceFilter === i.id && "text-primary")}
+                  >
+                    <span className="truncate">{i.label}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {members.length > 1 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(
+                  "inline-flex max-w-40 items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
+                  assigneeFilter ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className="truncate">
+                  {assigneeFilter === "none"
+                    ? t("unassigned")
+                    : assigneeFilter
+                      ? memberName.get(assigneeFilter) || t("assignee")
+                      : t("assignee")}
+                </span>
+                <ChevronDown className="h-3 w-3 shrink-0" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-h-72 w-56 border-border bg-popover">
+                <DropdownMenuItem onClick={() => setAssigneeFilter(null)} className="text-sm">
+                  {t("allAssignees")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setAssigneeFilter("none")} className="text-sm">
+                  {t("unassigned")}
+                </DropdownMenuItem>
+                {members.map((m) => (
+                  <DropdownMenuItem
+                    key={m.user_id}
+                    onClick={() => setAssigneeFilter(m.user_id)}
+                    className={cn("text-sm", assigneeFilter === m.user_id && "text-primary")}
+                  >
+                    <span className="truncate">{m.full_name || m.user_id.slice(0, 6)}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           {companies.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -434,6 +560,7 @@ export function ConversationList({
                 conversation={conv}
                 isActive={conv.id === activeConversationId}
                 onSelect={handleSelect}
+                assigneeName={memberName.get(conv.assigned_agent_id ?? "") || null}
                 t={t}
               />
             ))}
@@ -461,6 +588,7 @@ interface ConversationItemProps {
   conversation: Conversation;
   isActive: boolean;
   onSelect: (conversation: Conversation) => void;
+  assigneeName: string | null;
   t: ReturnType<typeof useTranslations>;
 }
 
@@ -468,6 +596,7 @@ function ConversationItem({
   conversation,
   isActive,
   onSelect,
+  assigneeName,
   t,
 }: ConversationItemProps) {
   const contact = conversation.contact;
@@ -521,6 +650,13 @@ function ConversationItem({
             {timeAgo}
           </span>
         </div>
+        {(conversation.unofficial_instance || assigneeName) && (
+          <p className="truncate text-[11px] text-[#008069] dark:text-[#25d366]">
+            {[conversation.unofficial_instance?.label, assigneeName]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        )}
         <div className="mt-0.5 flex items-center justify-between gap-2">
           <p className="truncate text-sm text-[#667781] dark:text-[#8696a0]">
             {conversation.last_message_text || t("noMessagesYet")}

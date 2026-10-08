@@ -161,7 +161,12 @@ function InboxPageInner() {
           // realtime payloads never carry.
           return prev.map((c) =>
             c.id === fetched.id
-              ? { ...c, contact: c.contact ?? fetched.contact }
+              ? {
+                  ...c,
+                  contact: c.contact ?? fetched.contact,
+                  unofficial_instance:
+                    c.unofficial_instance ?? fetched.unofficial_instance,
+                }
               : c,
           );
         }
@@ -563,7 +568,7 @@ function InboxPageInner() {
 
   return (
     <div
-      className="-m-4 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden sm:-m-6"
+      className="-m-4 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden sm:-m-6 lg:h-screen"
       style={
         {
           "--primary": "#00a884",
