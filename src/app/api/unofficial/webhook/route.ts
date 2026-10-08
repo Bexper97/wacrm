@@ -177,6 +177,7 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   if (!message) { console.warn('[unofficial/webhook] no message content'); return }
 
   const parsed = parseEvolutionMessage(message)
+  if (parsed.revokedId) { await markDeleted(parsed.revokedId); return }
   if (parsed.skip) { console.log('[unofficial/webhook] skipping system message'); return }
 
   console.log('[unofficial/webhook] processing message from', phone, 'via', instanceName)
@@ -478,6 +479,17 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   }).catch(e => console.error('[unofficial/webhook] webhook event error:', e))
 }
 
+/** The message stays in the CRM; it is only flagged as deleted on WhatsApp. */
+async function markDeleted(waMessageId: string) {
+  const { error } = await supabaseAdmin()
+    .from('messages')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('message_id', waMessageId)
+    .is('deleted_at', null)
+  if (error) console.error('[unofficial/webhook] mark deleted error:', error.message)
+  else console.log('[unofficial/webhook] message flagged as deleted:', waMessageId)
+}
+
 // Baileys status codes: 2 SERVER_ACK, 3 DELIVERY_ACK, 4 READ, 5 PLAYED
 const STATUS_BY_NAME: Record<string, 'sent' | 'delivered' | 'read'> = {
   SERVER_ACK: 'sent',
@@ -548,6 +560,15 @@ export async function POST(request: Request) {
             .update({ status, updated_at: new Date().toISOString() })
             .eq('instance_name', instanceName)
           console.log('[unofficial/webhook] connection status updated:', instanceName, status)
+        }
+        return
+      }
+
+      if (event === 'messages.delete') {
+        const items = Array.isArray(body.data) ? body.data : [body.data]
+        for (const item of items) {
+          const id: string | undefined = item?.id ?? item?.key?.id ?? item?.keyId
+          if (id) await markDeleted(id)
         }
         return
       }

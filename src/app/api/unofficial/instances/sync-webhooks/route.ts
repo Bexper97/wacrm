@@ -23,6 +23,7 @@ function supabaseAdmin() {
 }
 
 function webhookUrl(): string {
+  if (process.env.UNOFFICIAL_WA_WEBHOOK_URL) return process.env.UNOFFICIAL_WA_WEBHOOK_URL
   const base =
     process.env.NEXT_PUBLIC_APP_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')

@@ -11,6 +11,7 @@ import {
   LayoutTemplate,
   CornerDownLeft,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ReplyQuote } from "./reply-quote";
@@ -383,6 +384,12 @@ export function MessageBubble({
             style={{ color: senderColor(message.sender_jid ?? message.sender_label) }}
           >
             {message.sender_label}
+          </p>
+        )}
+        {message.deleted_at && (
+          <p className="mb-1 flex items-center gap-1 text-[11px] italic text-red-600 dark:text-red-400">
+            <Trash2 className="h-3 w-3" />
+            {t("deletedOnWhatsapp")}
           </p>
         )}
         {reply && (

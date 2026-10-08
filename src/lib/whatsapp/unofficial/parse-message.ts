@@ -20,6 +20,8 @@ export interface ParsedMessage {
   skip?: boolean
   /** WhatsApp id of the quoted message when this one is a reply. */
   quotedId?: string
+  /** Set when this notice says a previous message was deleted on the phone. */
+  revokedId?: string
 }
 
 export function unwrap(msg: Raw): Raw {
@@ -105,6 +107,17 @@ function parseInner(raw: Raw): ParsedMessage {
         targetId: msg.reactionMessage.key?.id ?? '',
         emoji: msg.reactionMessage.text ?? '',
       },
+    }
+  }
+
+  const proto = msg.protocolMessage
+  if (proto && (proto.type === 0 || proto.type === 'REVOKE') && proto.key?.id) {
+    return {
+      contentType: 'text',
+      contentText: null,
+      ...none,
+      skip: true,
+      revokedId: proto.key.id,
     }
   }
 

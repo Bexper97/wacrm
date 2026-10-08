@@ -459,6 +459,11 @@ export function UnofficialWaConnections() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Keep every number's webhook current (e.g. newly subscribed events). Admin-only; others get 403, ignored.
+  useEffect(() => {
+    void fetch('/api/unofficial/instances/sync-webhooks', { method: 'POST' }).catch(() => {});
+  }, []);
+
   function handleCreated(instance: Instance) {
     setInstances((prev) => [...prev, instance]);
     setQrTarget(instance);

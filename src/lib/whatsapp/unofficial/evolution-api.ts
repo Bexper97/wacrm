@@ -83,7 +83,7 @@ export async function createInstance(opts: CreateInstanceOptions): Promise<unkno
       url: opts.webhookUrl,
       byEvents: false,
       base64: false,
-      events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE'],
+      events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'MESSAGES_DELETE', 'CONNECTION_UPDATE'],
     },
   })
 }
@@ -95,7 +95,7 @@ export async function setWebhook(instanceName: string, webhookUrl: string): Prom
       url: webhookUrl,
       byEvents: false,
       base64: false,
-      events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE'],
+      events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'MESSAGES_DELETE', 'CONNECTION_UPDATE'],
     },
   })
 }

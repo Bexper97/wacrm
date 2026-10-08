@@ -257,6 +257,7 @@
       "buttonReply": "Button reply",
       "interactiveReply": "[Interactive reply]",
       "unsupported": "[Unsupported message type]",
+      "deletedOnWhatsapp": "Deleted on WhatsApp",
       "aiBadge": "AI",
       "aiBadgeTitle": "Sent automatically by the AI assistant",
       "notDelivered": "Not delivered",

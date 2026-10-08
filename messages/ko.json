@@ -257,6 +257,7 @@
       "buttonReply": "버튼 응답",
       "interactiveReply": "[인터랙티브 응답]",
       "unsupported": "[지원되지 않는 메시지 형식]",
+      "deletedOnWhatsapp": "WhatsApp에서 삭제됨",
       "aiBadge": "AI",
       "aiBadgeTitle": "AI 어시스턴트가 자동으로 전송함",
       "notDelivered": "전송 실패",

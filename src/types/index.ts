@@ -273,6 +273,8 @@ export interface Message {
    */
   interactive_payload?: InteractiveMessagePayload;
   /** Group chats: who wrote this message (display name or +phone). */
+  /** Set when the message was deleted on the phone; the content is kept. */
+  deleted_at?: string | null;
   sender_label?: string | null;
   sender_jid?: string | null;
   /**
