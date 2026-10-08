@@ -65,6 +65,7 @@ export async function POST(request: Request) {
 
     // Send via Evolution API
     let waMessageId: string
+    try {
     if (message_type === 'text') {
       if (!content_text) {
         return NextResponse.json({ error: 'content_text is required for text messages' }, { status: 400 })
@@ -84,6 +85,19 @@ export async function POST(request: Request) {
       }
       const result = await sendMedia(instanceName, phone, media_url, mediatype, content_text ?? undefined, filename)
       waMessageId = result.key.id
+    }
+    } catch (sendErr) {
+      const raw = sendErr instanceof Error ? sendErr.message : String(sendErr)
+      console.error('[unofficial/send] evolution error:', raw)
+      let friendly = `Falha ao enviar pelo WhatsApp: ${raw.replace(/^\[evolution-api\]\s*/, '')}`
+      if (/"exists":\s*false|not.*exist.*whatsapp/i.test(raw)) {
+        friendly = 'Este número não tem WhatsApp (ou o número do contato está incorreto).'
+      } else if (/instance.*does not exist|not found/i.test(raw)) {
+        friendly = 'Este número do CRM não existe mais na Evolution. Gere o QR novamente em Configurações → Números WhatsApp.'
+      } else if (/connection closed|not connected|disconnected|close/i.test(raw)) {
+        friendly = 'O número está desconectado. Reconecte em Configurações → Números WhatsApp.'
+      }
+      return NextResponse.json({ error: friendly }, { status: 502 })
     }
 
     // Persist the outbound message

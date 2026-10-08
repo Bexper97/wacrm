@@ -80,6 +80,24 @@ function StatusIcon({
   }
 }
 
+/** A text message that is a map link with coordinates → location card data. */
+function parseMapLink(
+  text?: string | null,
+): { lat: number; lng: number; url: string; caption: string } | null {
+  if (!text) return null;
+  const urlMatch = text.match(/https?:\/\/[^\s]*(?:google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|openstreetmap\.org)[^\s]*/i);
+  if (!urlMatch) return null;
+  const url = urlMatch[0];
+  const coords =
+    url.match(/[?&](?:q|ll|query|mlat)=(-?\d+(?:\.\d+)?)(?:,|%2C|&mlon=)(-?\d+(?:\.\d+)?)/i) ??
+    url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  if (!coords) return null;
+  const lat = parseFloat(coords[1]);
+  const lng = parseFloat(coords[2]);
+  if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+  return { lat, lng, url, caption: text.replace(url, "").trim() };
+}
+
 const MAP_W = 260;
 const MAP_H = 150;
 const MAP_ZOOM = 16;
@@ -148,12 +166,24 @@ function MessageContent({
   const openMedia = onOpenMedia ? () => onOpenMedia(message.id) : undefined;
 
   switch (message.content_type) {
-    case "text":
+    case "text": {
+      const map = parseMapLink(message.content_text);
+      if (map) {
+        return (
+          <div className="flex flex-col gap-1 text-sm">
+            <LocationMap lat={map.lat} lng={map.lng} href={map.url} />
+            {map.caption && (
+              <span className="whitespace-pre-wrap break-words">{map.caption}</span>
+            )}
+          </div>
+        );
+      }
       return (
         <p className="whitespace-pre-wrap break-words text-sm">
           {message.content_text}
         </p>
       );
+    }
 
     case "image":
       return (

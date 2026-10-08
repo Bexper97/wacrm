@@ -35,8 +35,10 @@ async function callApi<T>(
     body: body ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) {
-    const errBody = await res.json().catch(() => ({}))
-    const msg = (errBody as Record<string, string>).message ?? `HTTP ${res.status}`
+    const errBody = (await res.json().catch(() => ({}))) as Record<string, unknown>
+    const nested = (errBody.response as Record<string, unknown> | undefined)?.message
+    const raw = nested ?? errBody.message ?? errBody.error ?? `HTTP ${res.status}`
+    const msg = typeof raw === 'string' ? raw : JSON.stringify(raw)
     throw new Error(`[evolution-api] ${method} ${path} → ${msg}`)
   }
   return res.json() as Promise<T>
