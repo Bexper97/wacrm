@@ -28,6 +28,11 @@ export interface InteractiveButton {
   id: string
   /** Visible label (≤ 20 chars per Meta). */
   title: string
+  /** Received buttons only: what tapping it does (link, copy code, call). */
+  action?:
+    | { type: 'url'; url: string }
+    | { type: 'copy'; code: string }
+    | { type: 'call'; phone: string }
 }
 
 export interface InteractiveButtonsPayload {

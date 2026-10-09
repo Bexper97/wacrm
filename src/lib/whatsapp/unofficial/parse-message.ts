@@ -2,7 +2,7 @@
  * Turns a raw Baileys/Evolution `message` object into something the CRM inbox can render.
  */
 
-import type { InteractiveMessagePayload } from '@/lib/whatsapp/interactive'
+import type { InteractiveButton, InteractiveMessagePayload } from '@/lib/whatsapp/interactive'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Raw = Record<string, any>
@@ -58,6 +58,21 @@ const NATIVE_FLOW_LABELS: Record<string, string> = {
   cta_copy: 'Copiar código',
   cta_call: 'Ligar',
   open_webview: 'Abrir',
+}
+
+function nativeFlowAction(button: Raw): InteractiveButton['action'] {
+  let params: Raw = {}
+  try {
+    params = button.buttonParamsJson ? JSON.parse(button.buttonParamsJson) : {}
+  } catch {
+    return undefined
+  }
+  if (typeof params.url === 'string' && /^https?:\/\//i.test(params.url)) {
+    return { type: 'url', url: params.url }
+  }
+  if (typeof params.copy_code === 'string') return { type: 'copy', code: params.copy_code }
+  if (typeof params.phone_number === 'string') return { type: 'call', phone: params.phone_number }
+  return undefined
 }
 
 function nativeFlowTitle(button: Raw): string {
@@ -198,6 +213,11 @@ function parseInner(raw: Raw): ParsedMessage {
           b.urlButton?.displayText ??
           b.callButton?.displayText ??
           'Opção',
+        action: /^https?:\/\//i.test(b.urlButton?.url ?? '')
+          ? { type: 'url' as const, url: b.urlButton.url }
+          : b.callButton?.phoneNumber
+            ? { type: 'call' as const, phone: b.callButton.phoneNumber }
+            : undefined,
       })),
     })
   }
@@ -207,6 +227,7 @@ function parseInner(raw: Raw): ParsedMessage {
     const buttons = (m.nativeFlowMessage?.buttons ?? []).map((b: Raw, i: number) => ({
       id: b.name ?? String(i),
       title: nativeFlowTitle(b),
+      action: nativeFlowAction(b),
     }))
     return interactive({
       kind: 'buttons',
