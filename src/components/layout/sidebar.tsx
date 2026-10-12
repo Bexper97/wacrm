@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { createClient } from "@/lib/supabase/client";
 import { useTotalUnread } from "@/hooks/use-total-unread";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import {
@@ -20,6 +21,7 @@ import {
   Radio,
   Settings,
   Shield,
+  ShieldAlert,
   User,
   UserCog,
   Users,
@@ -90,11 +92,14 @@ interface NavItem {
    * Purely informational — doesn't affect routing or access.
    */
   beta?: boolean;
+  /** Visible to admins and above only. */
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
   { href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard },
   { href: "/inbox", labelKey: "inbox", icon: MessageSquare },
+  { href: "/alerts", labelKey: "alerts", icon: ShieldAlert, adminOnly: true },
   { href: "/notifications", labelKey: "notifications", icon: Bell },
   { href: "/contacts", labelKey: "contacts", icon: Users },
   { href: "/pipelines", labelKey: "pipelines", icon: GitBranch },
@@ -121,9 +126,31 @@ const SIDEBAR_COLLAPSED_KEY = "wacrm:sidebar-collapsed";
 export function Sidebar({ open = false, onClose }: SidebarProps) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
-  const { profile, profileLoading, account, accountRole, signOut } = useAuth();
+  const { profile, profileLoading, account, accountRole, signOut, canManageMembers, accountId } = useAuth();
   const totalUnread = useTotalUnread();
   const unreadNotifications = useUnreadNotifications();
+
+  // Open alerts badge — admins only (RLS already hides alerts from everyone else).
+  const [openAlerts, setOpenAlerts] = useState(0);
+  useEffect(() => {
+    if (!canManageMembers || !accountId) return;
+    let cancelled = false;
+    const supabase = createClient();
+    const load = async () => {
+      const { count } = await supabase
+        .from("conversation_alerts")
+        .select("id", { count: "exact", head: true })
+        .eq("account_id", accountId)
+        .eq("status", "open");
+      if (!cancelled) setOpenAlerts(count ?? 0);
+    };
+    load();
+    const timer = setInterval(load, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [canManageMembers, accountId, pathname]);
 
   // Desktop-only collapse; restored after mount to avoid a hydration mismatch.
   const [collapsed, setCollapsed] = useState(false);
@@ -247,7 +274,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         {/* Main navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="flex flex-col gap-1">
-            {navItems.map((item) => {
+            {navItems.filter((item) => !item.adminOnly || canManageMembers).map((item) => {
               const isActive =
                 pathname === item.href ||
                 (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -261,6 +288,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               // viewing this section".
               const showNotificationBadge =
                 item.href === "/notifications" && unreadNotifications > 0;
+              const showAlertBadge = item.href === "/alerts" && openAlerts > 0;
 
               return (
                 <li key={item.href}>
@@ -298,6 +326,16 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                       >
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lime opacity-75" />
                         <span className="relative inline-flex h-2 w-2 rounded-full bg-lime" />
+                      </span>
+                    )}
+                    {showAlertBadge && (
+                      <span
+                        className={cn(
+                          "flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-white",
+                          hideWhenCollapsed,
+                        )}
+                      >
+                        {openAlerts > 99 ? "99+" : openAlerts}
                       </span>
                     )}
                     {showNotificationBadge && (
