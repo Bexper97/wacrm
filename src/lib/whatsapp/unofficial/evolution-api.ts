@@ -312,6 +312,24 @@ export async function sendList(
   })
 }
 
+/** Phone number (digits) the instance is connected as, or null when unknown. */
+export async function fetchInstanceOwner(instanceName: string): Promise<string | null> {
+  try {
+    const res = await callApi<unknown>(
+      'GET',
+      `/instance/fetchInstances?instanceName=${encodeURIComponent(instanceName)}`
+    )
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const item = (Array.isArray(res) ? res[0] : res) as Record<string, any> | undefined
+    const raw =
+      item?.ownerJid ?? item?.instance?.owner ?? item?.owner ?? item?.number ?? item?.instance?.number
+    const digits = typeof raw === 'string' ? raw.split('@')[0].replace(/\D/g, '') : ''
+    return digits.length >= 8 ? digits : null
+  } catch {
+    return null
+  }
+}
+
 /** Profile picture URL of a contact or group (null when private / not set). */
 export async function fetchProfilePictureUrl(
   instanceName: string,

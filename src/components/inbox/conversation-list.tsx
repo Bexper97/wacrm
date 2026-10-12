@@ -253,8 +253,8 @@ export function ConversationList({
         const numberLabel = c.unofficial_instance?.label?.toLowerCase() ?? "";
         const agent = memberName.get(c.assigned_agent_id ?? "")?.toLowerCase() ?? "";
         // Numbers match regardless of formatting: "(62) 9 9999-0000" finds +5562999990000.
-        const qDigits = q.replace(/D/g, "");
-        const phoneDigits = (c.contact?.phone ?? "").replace(/D/g, "");
+        const qDigits = q.replace(/\D/g, "");
+        const phoneDigits = (c.contact?.phone ?? "").replace(/\D/g, "");
         const digitsMatch = qDigits.length >= 3 && phoneDigits.includes(qDigits);
         return (
           digitsMatch ||

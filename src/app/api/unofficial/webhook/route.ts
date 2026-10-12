@@ -6,7 +6,7 @@ import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
-import { getMediaBase64, getGroupInfo } from '@/lib/whatsapp/unofficial/evolution-api'
+import { getMediaBase64, getGroupInfo, fetchInstanceOwner } from '@/lib/whatsapp/unofficial/evolution-api'
 import { refreshContactAvatar } from '@/lib/whatsapp/unofficial/avatars'
 import {
   parseEvolutionMessage,
@@ -226,7 +226,12 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   // Newer WhatsApp versions may address chats by @lid; prefer the real phone JID when provided
   const rawJid: string = key.remoteJid ?? ''
   const isGroup = rawJid.endsWith('@g.us')
-  const jid = rawJid.endsWith('@lid') ? (key.remoteJidAlt ?? key.senderPn ?? rawJid) : rawJid
+  if (rawJid.endsWith('@lid') && (key.remoteJidAlt ?? key.senderPn)) {
+    lidToPn.set(rawJid, key.remoteJidAlt ?? key.senderPn)
+  }
+  const jid = rawJid.endsWith('@lid')
+    ? (key.remoteJidAlt ?? key.senderPn ?? lidToPn.get(rawJid) ?? rawJid)
+    : rawJid
   // A group has no phone number — its contact row is keyed by the group id digits.
   const phone = isGroup
     ? `+${rawJid.split('@')[0].replace(/\D/g, '')}`
@@ -595,6 +600,35 @@ async function markDeleted(waMessageId: string) {
   else console.log('[unofficial/webhook] message flagged as deleted:', waMessageId)
 }
 
+// WhatsApp may address a person by an internal id (@lid) instead of the phone. We remember pairs we have seen.
+const lidToPn = new Map<string, string>()
+const ownerCache = new Map<string, string>()
+
+const isLid = (j?: string | null): j is string => !!j && j.endsWith('@lid')
+const isPn = (j?: string | null): j is string => !!j && j.endsWith('@s.whatsapp.net')
+const digitsOf = (j: string) => j.split('@')[0].replace(/\D/g, '')
+
+/** Digits of the phone number this instance is connected as (cached; also fills the Settings screen). */
+async function getOwnerDigits(instanceName: string): Promise<string | null> {
+  const cached = ownerCache.get(instanceName)
+  if (cached) return cached
+  const db = supabaseAdmin()
+  const { data } = await db
+    .from('unofficial_wa_instances')
+    .select('id, phone')
+    .eq('instance_name', instanceName)
+    .maybeSingle()
+  let digits = ((data?.phone as string | null) ?? '').replace(/\D/g, '')
+  if (digits.length < 8) {
+    digits = (await fetchInstanceOwner(instanceName)) ?? ''
+    if (digits && data?.id) {
+      await db.from('unofficial_wa_instances').update({ phone: `+${digits}` }).eq('id', data.id)
+    }
+  }
+  if (digits.length >= 8) ownerCache.set(instanceName, digits)
+  return digits || null
+}
+
 /** Turns a CALL event into a synthetic message so it flows through the normal pipeline. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleCallEvent(instanceName: string, c: Record<string, any> | null | undefined) {
@@ -603,12 +637,23 @@ async function handleCallEvent(instanceName: string, c: Record<string, any> | nu
   if (!callId) return
   if (c.isGroup || c.groupJid) return // group calls are not logged
 
-  const chatJid: string = c.chatId ?? c.from ?? ''
-  const creatorJid: string = c.from ?? chatJid
-  if (!chatJid) return
+  // Evolution maps `from` (who started the call) to the real phone, but `chatId` may still be the internal @lid.
+  const from: string | null = typeof c.from === 'string' ? c.from : null
+  const chatId: string | null = typeof c.chatId === 'string' ? c.chatId : null
+  if (!from && !chatId) return
 
-  const digits = (jid: string) => jid.split('@')[0].replace(/D/g, '')
-  const outgoing = digits(creatorJid) !== digits(chatJid)
+  const ownerDigits = await getOwnerDigits(instanceName)
+  const outgoing = !!(from && ownerDigits && digitsOf(from).slice(-8) === ownerDigits.slice(-8))
+
+  if (!outgoing && isLid(chatId) && isPn(from)) lidToPn.set(chatId, from)
+
+  let chatJid: string = (outgoing ? (chatId ?? from) : (from ?? chatId)) as string
+  if (isLid(chatJid)) {
+    const pnRaw: string | undefined = c.callerPn ?? c.caller_pn ?? c.remoteJidAlt ?? c.senderPn
+    const pn = pnRaw ? (pnRaw.includes('@') ? pnRaw : `${pnRaw.replace(/\D/g, '')}@s.whatsapp.net`) : null
+    chatJid = pn ?? lidToPn.get(chatJid) ?? chatJid
+    if (isLid(chatJid)) console.warn('[unofficial/webhook] call from unmapped LID, keeping as is:', chatJid)
+  }
 
   let dateMs = typeof c.date === 'number' ? c.date : Date.parse(String(c.date ?? ''))
   if (!Number.isFinite(dateMs)) dateMs = Date.now()
