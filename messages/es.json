@@ -355,7 +355,14 @@
       "dealFailed": "No se pudo guardar el negocio",
       "confirmDeleteDeal": "¿Eliminar este negocio?",
       "confirmDeleteNote": "¿Eliminar esta nota?",
-      "noteFailed": "No se pudo cambiar la nota"
+      "noteFailed": "No se pudo cambiar la nota",
+      "mediaSection": "Multimedia",
+      "mediaCount": "{count, plural, =0 {Sin elementos} one {# elemento} other {# elementos}}",
+      "tileMedia": "Media",
+      "tileDocs": "Docs",
+      "tileLinks": "Enlaces",
+      "mediaEmpty": "Nada por aquí todavía",
+      "openLink": "Abrir enlace"
     },
     "aiBanner": {
       "pausedTitle": "El asistente de IA está en pausa aquí",

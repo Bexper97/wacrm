@@ -355,7 +355,14 @@
       "dealFailed": "Could not save the deal",
       "confirmDeleteDeal": "Delete this deal?",
       "confirmDeleteNote": "Delete this note?",
-      "noteFailed": "Could not change the note"
+      "noteFailed": "Could not change the note",
+      "mediaSection": "Media",
+      "mediaCount": "{count, plural, =0 {No items} one {# item} other {# items}}",
+      "tileMedia": "Media",
+      "tileDocs": "Docs",
+      "tileLinks": "Links",
+      "mediaEmpty": "Nothing here yet",
+      "openLink": "Open link"
     },
     "aiBanner": {
       "pausedTitle": "AI assistant is paused here",

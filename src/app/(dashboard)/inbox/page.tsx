@@ -676,6 +676,8 @@ function InboxPageInner() {
           <div className="hidden lg:block">
             <ContactSidebar
               contact={activeContact}
+              conversationId={activeConversation?.id ?? null}
+              mediaRefreshKey={messages.length}
               onContactUpdated={(updated) => {
                 setActiveContact(updated);
                 setConversations((prev) =>

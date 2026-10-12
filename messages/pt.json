@@ -355,7 +355,14 @@
       "dealFailed": "Não foi possível salvar o negócio",
       "confirmDeleteDeal": "Excluir este negócio?",
       "confirmDeleteNote": "Excluir esta nota?",
-      "noteFailed": "Não foi possível alterar a nota"
+      "noteFailed": "Não foi possível alterar a nota",
+      "mediaSection": "Mídias",
+      "mediaCount": "{count, plural, =0 {Nenhum item} one {# item} other {# itens}}",
+      "tileMedia": "Mídias",
+      "tileDocs": "Docs",
+      "tileLinks": "Links",
+      "mediaEmpty": "Nada por aqui ainda",
+      "openLink": "Abrir link"
     },
     "aiBanner": {
       "pausedTitle": "O assistente de IA está pausado aqui",

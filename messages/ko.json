@@ -355,7 +355,14 @@
       "dealFailed": "거래를 저장할 수 없습니다",
       "confirmDeleteDeal": "이 거래를 삭제할까요?",
       "confirmDeleteNote": "이 메모를 삭제할까요?",
-      "noteFailed": "메모를 변경할 수 없습니다"
+      "noteFailed": "메모를 변경할 수 없습니다",
+      "mediaSection": "미디어",
+      "mediaCount": "{count, plural, =0 {항목 없음} other {#개 항목}}",
+      "tileMedia": "미디어",
+      "tileDocs": "문서",
+      "tileLinks": "링크",
+      "mediaEmpty": "아직 아무것도 없습니다",
+      "openLink": "링크 열기"
     },
     "aiBanner": {
       "pausedTitle": "이 대화에서 AI 어시스턴트가 일시 중지됨",

@@ -24,11 +24,16 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 import { contactHandle } from "@/lib/whatsapp/wa-identity";
+import { ConversationMedia } from "./conversation-media";
 
 interface ContactSidebarProps {
   contact: Contact | null;
   /** Called with the saved contact so the inbox list / header stay in sync. */
   onContactUpdated?: (contact: Contact) => void;
+  /** Open conversation — drives the Mídias / Docs / Links shortcuts. */
+  conversationId?: string | null;
+  /** Bumps when the thread changes so the media counts refresh. */
+  mediaRefreshKey?: number;
 }
 
 type StageOption = { id: string; name: string; color: string; position: number };
@@ -60,7 +65,12 @@ function formatMoney(value: number, currency?: string | null): string {
 const FIELD =
   "w-full rounded-md border border-border bg-muted px-2 py-1.5 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-primary/50";
 
-export function ContactSidebar({ contact, onContactUpdated }: ContactSidebarProps) {
+export function ContactSidebar({
+  contact,
+  onContactUpdated,
+  conversationId,
+  mediaRefreshKey,
+}: ContactSidebarProps) {
   const tSidebar = useTranslations("Inbox.sidebar");
   const tThread = useTranslations("Inbox.messageThread");
 
@@ -559,6 +569,14 @@ export function ContactSidebar({ contact, onContactUpdated }: ContactSidebarProp
           </div>
 
           <div className="my-4 border-t border-border" />
+
+          {/* Mídias / Docs / Links received in this conversation */}
+          {conversationId && (
+            <>
+              <ConversationMedia conversationId={conversationId} refreshKey={mediaRefreshKey} />
+              <div className="my-4 border-t border-border" />
+            </>
+          )}
 
           {/* Deals */}
           <div>
