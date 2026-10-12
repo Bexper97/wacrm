@@ -229,6 +229,17 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   if (rawJid.endsWith('@lid') && (key.remoteJidAlt ?? key.senderPn)) {
     lidToPn.set(rawJid, key.remoteJidAlt ?? key.senderPn)
   }
+  // Phone-addressed chats can carry the person's internal id as the "alt" — remember that pair too.
+  for (const alt of [key.remoteJidAlt, key.senderLid, key.participantLid]) {
+    if (typeof alt === 'string' && alt.endsWith('@lid') && rawJid.endsWith('@s.whatsapp.net')) {
+      lidToPn.set(alt, rawJid)
+    }
+  }
+  if (key.remoteJidAlt || key.senderPn || key.senderLid) {
+    console.log('[unofficial/webhook] id pair seen:', JSON.stringify({
+      remoteJid: key.remoteJid, remoteJidAlt: key.remoteJidAlt, senderPn: key.senderPn, senderLid: key.senderLid,
+    }))
+  }
   const jid = rawJid.endsWith('@lid')
     ? (key.remoteJidAlt ?? key.senderPn ?? lidToPn.get(rawJid) ?? rawJid)
     : rawJid
