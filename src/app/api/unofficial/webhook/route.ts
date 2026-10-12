@@ -8,7 +8,11 @@ import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
 import { getMediaBase64, getGroupInfo } from '@/lib/whatsapp/unofficial/evolution-api'
 import { refreshContactAvatar } from '@/lib/whatsapp/unofficial/avatars'
-import { parseEvolutionMessage, unwrap } from '@/lib/whatsapp/unofficial/parse-message'
+import {
+  parseEvolutionMessage,
+  unwrap,
+  type CallEvent,
+} from '@/lib/whatsapp/unofficial/parse-message'
 import { buildMediaPath, MEDIA_MAX_BYTES } from '@/lib/storage/upload-media'
 import {
   MIRROR_BUCKET,
@@ -72,6 +76,69 @@ async function storeReaction(args: {
     { onConflict: 'message_id,actor_type,actor_id' },
   )
   if (error) console.error('[unofficial/webhook] reaction upsert error:', error.message)
+}
+
+interface CallState {
+  kind: 'voice' | 'video'
+  dir: 'in' | 'out'
+  state: 'ringing' | 'answered' | 'missed' | 'rejected' | 'noanswer'
+  acceptedAt?: number
+  durationSec?: number
+}
+
+/** Folds one call event into the stored state of that call. */
+function mergeCallState(prevJson: string | null, ev: CallEvent): CallState {
+  let prev: CallState | null = null
+  try { prev = prevJson ? (JSON.parse(prevJson) as CallState) : null } catch { prev = null }
+  const call: CallState = prev ?? {
+    kind: ev.isVideo ? 'video' : 'voice',
+    dir: ev.outgoing ? 'out' : 'in',
+    state: 'ringing',
+  }
+  if (ev.isVideo) call.kind = 'video'
+
+  switch (ev.status) {
+    case 'accept':
+      if (call.state !== 'answered') { call.state = 'answered'; call.acceptedAt = ev.date }
+      break
+    case 'reject':
+      if (call.state === 'ringing') call.state = 'rejected'
+      break
+    case 'timeout':
+      if (call.state === 'ringing') call.state = call.dir === 'in' ? 'missed' : 'noanswer'
+      break
+    case 'terminate':
+      if (call.state === 'answered') {
+        if (call.acceptedAt && call.durationSec === undefined) {
+          call.durationSec = Math.max(0, Math.round((ev.date - call.acceptedAt) / 1000))
+        }
+      } else if (call.state === 'ringing') {
+        call.state = call.dir === 'in' ? 'missed' : 'noanswer'
+      }
+      break
+    default:
+      // offer / ringing: keep the current state
+  }
+  return call
+}
+
+function formatCallDuration(sec: number): string {
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return m > 0 ? `${m}min ${s}s` : `${s}s`
+}
+
+function callPreviewText(c: CallState): string {
+  const icon = c.kind === 'video' ? '📹' : '📞'
+  const kind = c.kind === 'video' ? 'vídeo' : 'voz'
+  switch (c.state) {
+    case 'answered':
+      return `${icon} Chamada de ${kind} atendida${c.durationSec != null ? ` · ${formatCallDuration(c.durationSec)}` : ''}`
+    case 'missed': return `${icon} Chamada de ${kind} perdida`
+    case 'rejected': return `${icon} Chamada de ${kind} recusada`
+    case 'noanswer': return `${icon} Chamada de ${kind} sem resposta`
+    default: return `${icon} Chamando…`
+  }
 }
 
 function previewText(contentType: string, contentText: string | null): string {
@@ -336,8 +403,33 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
     })
   }
 
+  // Call events update ONE card per call id instead of adding messages.
+  let callText: string | null = null
+  let callPreview: string | null = null
+  if (parsed.call) {
+    const { data: existingCall } = await db
+      .from('messages')
+      .select('id, content_text')
+      .eq('conversation_id', conversationId)
+      .eq('message_id', key.id)
+      .maybeSingle()
+    const next = mergeCallState(existingCall?.content_text ?? null, parsed.call)
+    callText = JSON.stringify(next)
+    callPreview = callPreviewText(next)
+    if (existingCall) {
+      await db.from('messages').update({ content_text: callText }).eq('id', existingCall.id)
+      await db.from('conversations').update({
+        last_message_text: callPreview,
+        updated_at: new Date().toISOString(),
+      }).eq('id', conversationId)
+      return
+    }
+  }
+
   // Insert message
-  const { contentType, contentText } = parsed
+  const contentType = parsed.contentType
+  const contentText = callText ?? parsed.contentText
+  const messagePreview = callPreview ?? previewText(contentType, contentText)
   let mediaType = parsed.mediaType
   let mediaUrl: string | null = null
 
@@ -411,7 +503,7 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
   // Sent from the phone itself: just refresh the preview — no unread bump, flows, automations or AI.
   if (fromMe) {
     await db.from('conversations').update({
-      last_message_text: previewText(contentType, contentText),
+      last_message_text: messagePreview,
       last_message_at: createdAt,
       updated_at: new Date().toISOString(),
     }).eq('id', conversationId)
@@ -420,7 +512,7 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
 
   // Bump conversation (last_message_at + unread_count++)
   const preview =
-    (isGroup && senderLabel ? `${senderLabel}: ` : '') + previewText(contentType, contentText)
+    (isGroup && senderLabel ? `${senderLabel}: ` : '') + messagePreview
   const { error: bumpError } = await db.rpc('bump_conversation_on_inbound', {
     p_conversation_id: conversationId,
     p_last_message_text: preview,
@@ -448,6 +540,9 @@ async function handleMessage(instanceName: string, msgData: Record<string, any>)
     content_text: contentText,
     sender_type: 'customer' as const,
   }
+
+  // A call card is a log entry, not something to answer: no flows, automations or AI.
+  if (parsed.call) return
 
   // Group chats never trigger bots: flows, automations and AI replies stay 1:1 only.
   if (isGroup) {
@@ -498,6 +593,44 @@ async function markDeleted(waMessageId: string) {
     .is('deleted_at', null)
   if (error) console.error('[unofficial/webhook] mark deleted error:', error.message)
   else console.log('[unofficial/webhook] message flagged as deleted:', waMessageId)
+}
+
+/** Turns a CALL event into a synthetic message so it flows through the normal pipeline. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleCallEvent(instanceName: string, c: Record<string, any> | null | undefined) {
+  if (!c) return
+  const callId: string | undefined = c.id ?? c.callId
+  if (!callId) return
+  if (c.isGroup || c.groupJid) return // group calls are not logged
+
+  const chatJid: string = c.chatId ?? c.from ?? ''
+  const creatorJid: string = c.from ?? chatJid
+  if (!chatJid) return
+
+  const digits = (jid: string) => jid.split('@')[0].replace(/D/g, '')
+  const outgoing = digits(creatorJid) !== digits(chatJid)
+
+  let dateMs = typeof c.date === 'number' ? c.date : Date.parse(String(c.date ?? ''))
+  if (!Number.isFinite(dateMs)) dateMs = Date.now()
+  else if (dateMs < 1e12) dateMs *= 1000
+
+  await handleMessage(instanceName, {
+    key: {
+      remoteJid: chatJid,
+      remoteJidAlt: c.remoteJidAlt ?? c.senderPn,
+      fromMe: outgoing,
+      id: `call:${callId}`,
+    },
+    message: {
+      __call: {
+        status: String(c.status ?? 'offer').toLowerCase(),
+        isVideo: c.isVideo === true,
+        outgoing,
+        date: dateMs,
+      },
+    },
+    messageTimestamp: Math.floor(dateMs / 1000),
+  })
 }
 
 // Baileys status codes: 2 SERVER_ACK, 3 DELIVERY_ACK, 4 READ, 5 PLAYED
@@ -571,6 +704,13 @@ export async function POST(request: Request) {
             .eq('instance_name', instanceName)
           console.log('[unofficial/webhook] connection status updated:', instanceName, status)
         }
+        return
+      }
+
+      if (event === 'call') {
+        const items = Array.isArray(body.data) ? body.data : [body.data]
+        console.log('[unofficial/webhook] call event:', JSON.stringify(items))
+        for (const c of items) await handleCallEvent(instanceName, c)
         return
       }
 

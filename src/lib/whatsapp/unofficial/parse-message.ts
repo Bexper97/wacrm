@@ -22,6 +22,17 @@ export interface ParsedMessage {
   quotedId?: string
   /** Set when this notice says a previous message was deleted on the phone. */
   revokedId?: string
+  /** A call event (offer / accept / reject / timeout / terminate), not a real message. */
+  call?: CallEvent
+}
+
+export interface CallEvent {
+  status: string
+  isVideo: boolean
+  /** True when the number we connected started the call. */
+  outgoing: boolean
+  /** Event time, epoch milliseconds. */
+  date: number
 }
 
 export function unwrap(msg: Raw): Raw {
@@ -112,6 +123,11 @@ export function parseEvolutionMessage(raw: Raw): ParsedMessage {
 
 function parseInner(raw: Raw): ParsedMessage {
   const msg = unwrap(raw)
+
+  // Synthetic wrapper built by the webhook for CALL events.
+  if (msg.__call) {
+    return { contentType: 'text', contentText: null, ...none, call: msg.__call as CallEvent }
+  }
 
   if (msg.reactionMessage) {
     return {

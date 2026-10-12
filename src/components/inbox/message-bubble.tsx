@@ -12,6 +12,11 @@ import {
   CornerDownLeft,
   Sparkles,
   Trash2,
+  Phone,
+  PhoneIncoming,
+  PhoneMissed,
+  PhoneOutgoing,
+  Video,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ReplyQuote } from "./reply-quote";
@@ -79,6 +84,81 @@ function StatusIcon({
     default:
       return null;
   }
+}
+
+interface CallInfo {
+  kind: "voice" | "video";
+  dir: "in" | "out";
+  state: "ringing" | "answered" | "missed" | "rejected" | "noanswer";
+  durationSec?: number;
+}
+
+/** Call cards are stored as a text message whose id starts with "call:" and whose body is JSON. */
+function parseCall(message: Message): CallInfo | null {
+  if (!message.message_id?.startsWith("call:") || !message.content_text) return null;
+  try {
+    return JSON.parse(message.content_text) as CallInfo;
+  } catch {
+    return null;
+  }
+}
+
+function CallCard({ call, t }: { call: CallInfo; t: ReturnType<typeof useTranslations> }) {
+  const bad = call.state === "missed" || call.state === "rejected" || call.state === "noanswer";
+  const Icon =
+    call.kind === "video"
+      ? Video
+      : call.state === "missed"
+        ? PhoneMissed
+        : call.dir === "in"
+          ? PhoneIncoming
+          : call.dir === "out"
+            ? PhoneOutgoing
+            : Phone;
+
+  const stateLabel =
+    call.state === "ringing"
+      ? t("callRinging")
+      : call.state === "answered"
+        ? call.dir === "in"
+          ? t("callAnsweredIn")
+          : t("callAnsweredOut")
+        : call.state === "missed"
+          ? t("callMissed")
+          : call.state === "rejected"
+            ? call.dir === "in"
+              ? t("callRejectedIn")
+              : t("callRejectedOut")
+            : t("callNoAnswer");
+
+  let duration = "";
+  if (call.durationSec != null) {
+    const m = Math.floor(call.durationSec / 60);
+    const s = call.durationSec % 60;
+    duration = m > 0 ? ` · ${m}min ${s}s` : ` · ${s}s`;
+  }
+
+  return (
+    <div className="flex min-w-44 items-center gap-3 py-0.5">
+      <span
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+          bad ? "bg-red-500/15 text-red-600 dark:text-red-400" : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-medium">
+          {call.kind === "video" ? t("callVideo") : t("callVoice")}
+        </span>
+        <span className={cn("block text-xs", bad ? "text-red-600 dark:text-red-400" : "opacity-80")}>
+          {stateLabel}
+          {duration}
+        </span>
+      </span>
+    </div>
+  );
 }
 
 const SENDER_COLORS = ["#1f7aec", "#c2410c", "#7c3aed", "#0f766e", "#be185d", "#a16207", "#047857", "#b91c1c"];
@@ -177,6 +257,8 @@ function MessageContent({
 
   switch (message.content_type) {
     case "text": {
+      const call = parseCall(message);
+      if (call) return <CallCard call={call} t={t} />;
       const map = parseMapLink(message.content_text);
       if (map) {
         return (
