@@ -140,7 +140,7 @@
       "whatsappNotConnected": "WhatsApp® is not connected. Go to Settings to connect your account."
     },
     "conversationList": {
-      "searchPlaceholder": "Search conversations...",
+      "searchPlaceholder": "Search by name or number...",
       "filterAll": "All",
       "filterUnread": "Unread",
       "filterOpen": "Open",
@@ -163,6 +163,11 @@
     "messageThread": {
       "backToConversations": "Back to conversations",
       "group": "Group",
+      "deleteConversation": "Delete conversation",
+      "deleteConversationConfirm": "Delete this conversation from the inbox? Its messages will also be removed from the CRM. This cannot be undone.",
+      "deleteConversationFailed": "Could not delete the conversation",
+      "deleteConversationDone": "Conversation deleted",
+      "moreActions": "More actions",
       "hideContactPanel": "Hide contact panel",
       "showContactPanel": "Show contact panel",
       "hideContact": "Hide contact",

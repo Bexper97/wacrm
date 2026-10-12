@@ -140,7 +140,7 @@
       "whatsappNotConnected": "O WhatsApp® não está conectado. Vá em Configurações para conectar sua conta."
     },
     "conversationList": {
-      "searchPlaceholder": "Buscar conversas...",
+      "searchPlaceholder": "Buscar por nome ou número...",
       "filterAll": "Todas",
       "filterUnread": "Não lidas",
       "filterOpen": "Abertas",
@@ -163,6 +163,11 @@
     "messageThread": {
       "backToConversations": "Voltar às conversas",
       "group": "Grupo",
+      "deleteConversation": "Excluir conversa",
+      "deleteConversationConfirm": "Excluir esta conversa do inbox? As mensagens dela também serão removidas do CRM. Esta ação não pode ser desfeita.",
+      "deleteConversationFailed": "Não foi possível excluir a conversa",
+      "deleteConversationDone": "Conversa excluída",
+      "moreActions": "Mais ações",
       "hideContactPanel": "Ocultar painel do contato",
       "showContactPanel": "Mostrar painel do contato",
       "hideContact": "Ocultar contato",

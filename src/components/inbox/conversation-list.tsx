@@ -95,15 +95,40 @@ export function ConversationList({
     return m;
   }, [members]);
 
+  // Every number registered in Settings → WhatsApp Numbers, even before it has a conversation.
+  const [registeredInstances, setRegisteredInstances] = useState<
+    { id: string; label: string; status?: string }[]
+  >([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/unofficial/instances");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setRegisteredInstances(data.instances ?? []);
+      } catch {
+        // falls back to numbers seen in conversations
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const instanceOptions = useMemo(() => {
-    const m = new Map<string, string>();
+    const m = new Map<string, { id: string; label: string; status?: string }>();
+    for (const i of registeredInstances) m.set(i.id, i);
     for (const c of conversations) {
-      if (c.unofficial_instance) m.set(c.unofficial_instance.id, c.unofficial_instance.label);
+      if (c.unofficial_instance && !m.has(c.unofficial_instance.id)) {
+        m.set(c.unofficial_instance.id, {
+          id: c.unofficial_instance.id,
+          label: c.unofficial_instance.label,
+        });
+      }
     }
-    return Array.from(m, ([id, label]) => ({ id, label })).sort((a, b) =>
-      a.label.localeCompare(b.label),
-    );
-  }, [conversations]);
+    return Array.from(m.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [conversations, registeredInstances]);
 
   // Keep the latest callback in a ref so the fetch effect below can
   // have a stable, empty-dep identity. Previously the fetch useCallback
@@ -227,7 +252,12 @@ export function ConversationList({
         const lastMsg = c.last_message_text?.toLowerCase() ?? "";
         const numberLabel = c.unofficial_instance?.label?.toLowerCase() ?? "";
         const agent = memberName.get(c.assigned_agent_id ?? "")?.toLowerCase() ?? "";
+        // Numbers match regardless of formatting: "(62) 9 9999-0000" finds +5562999990000.
+        const qDigits = q.replace(/D/g, "");
+        const phoneDigits = (c.contact?.phone ?? "").replace(/D/g, "");
+        const digitsMatch = qDigits.length >= 3 && phoneDigits.includes(qDigits);
         return (
+          digitsMatch ||
           name.includes(q) ||
           phone.includes(q) ||
           lastMsg.includes(q) ||
@@ -408,6 +438,16 @@ export function ConversationList({
                     onClick={() => setInstanceFilter(i.id)}
                     className={cn("text-sm", instanceFilter === i.id && "text-primary")}
                   >
+                    <span
+                      className={cn(
+                        "mr-2 h-2 w-2 shrink-0 rounded-full",
+                        i.status === "connected"
+                          ? "bg-green-500"
+                          : i.status
+                            ? "bg-muted-foreground/40"
+                            : "bg-transparent",
+                      )}
+                    />
                     <span className="truncate">{i.label}</span>
                   </DropdownMenuItem>
                 ))}

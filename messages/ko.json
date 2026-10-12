@@ -140,7 +140,7 @@
       "whatsappNotConnected": "WhatsApp®이 연결되어 있지 않습니다. 설정으로 이동해 계정을 연결하세요."
     },
     "conversationList": {
-      "searchPlaceholder": "대화 검색...",
+      "searchPlaceholder": "이름 또는 번호로 검색...",
       "filterAll": "전체",
       "filterUnread": "읽지 않음",
       "filterOpen": "열림",
@@ -163,6 +163,11 @@
     "messageThread": {
       "backToConversations": "대화 목록으로 돌아가기",
       "group": "그룹",
+      "deleteConversation": "대화 삭제",
+      "deleteConversationConfirm": "받은 편지함에서 이 대화를 삭제할까요? 대화의 메시지도 CRM에서 제거됩니다. 되돌릴 수 없습니다.",
+      "deleteConversationFailed": "대화를 삭제할 수 없습니다",
+      "deleteConversationDone": "대화가 삭제되었습니다",
+      "moreActions": "더 보기",
       "hideContactPanel": "연락처 패널 숨기기",
       "showContactPanel": "연락처 패널 표시",
       "hideContact": "연락처 숨기기",

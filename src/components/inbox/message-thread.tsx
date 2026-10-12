@@ -27,6 +27,8 @@ import {
   RefreshCw,
   PanelRightOpen,
   PanelRightClose,
+  MoreVertical,
+  Trash2,
 } from "lucide-react";
 import { format, isToday, isYesterday, differenceInHours } from "date-fns";
 import { useTranslations } from "next-intl";
@@ -107,6 +109,8 @@ interface MessageThreadProps {
    */
   contactPanelOpen?: boolean;
   onToggleContactPanel?: () => void;
+  /** Called after the conversation card was deleted, so the page can drop it. */
+  onDeleted?: (conversationId: string) => void;
 }
 
 function formatDateSeparator(dateStr: string, t: ReturnType<typeof useTranslations>): string {
@@ -171,12 +175,13 @@ export function MessageThread({
   onRefresh,
   contactPanelOpen,
   onToggleContactPanel,
+  onDeleted,
 }: MessageThreadProps) {
   const t = useTranslations("Inbox.messageThread");
   const tTimer = useTranslations("Inbox.sessionTimer");
   const tQuote = useTranslations("Inbox.replyQuote");
 
-  const { user } = useAuth();
+  const { user, canManageMembers } = useAuth();
   const { getPresence, getRow, now } = usePresence();
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -714,6 +719,22 @@ export function MessageThread({
     [conversation, onNewMessage, onUpdateMessage, t],
   );
 
+  const handleDeleteConversation = useCallback(async () => {
+    if (!conversation) return;
+    if (!window.confirm(t("deleteConversationConfirm"))) return;
+    try {
+      const res = await fetch(`/api/conversations/${conversation.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        toast.error(t("deleteConversationFailed"));
+        return;
+      }
+      toast.success(t("deleteConversationDone"));
+      onDeleted?.(conversation.id);
+    } catch {
+      toast.error(t("deleteConversationFailed"));
+    }
+  }, [conversation, onDeleted, t]);
+
   const handleStatusChange = useCallback(
     async (status: ConversationStatus) => {
       if (!conversation) return;
@@ -1170,6 +1191,28 @@ export function MessageThread({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* More actions */}
+          {canManageMembers && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label={t("moreActions")}
+                title={t("moreActions")}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="border-border bg-popover">
+                <DropdownMenuItem
+                  onClick={handleDeleteConversation}
+                  className="text-sm text-red-600 focus:text-red-600 dark:text-red-400"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {t("deleteConversation")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 

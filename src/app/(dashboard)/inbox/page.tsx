@@ -657,6 +657,10 @@ function InboxPageInner() {
             onStatusChange={handleStatusChange}
             onAssignChange={handleAssignChange}
             onBack={handleCloseConversation}
+            onDeleted={(id) => {
+              setConversations((prev) => prev.filter((c) => c.id !== id));
+              handleCloseConversation();
+            }}
             resyncToken={resyncToken}
             onRefresh={handleManualRefresh}
             contactPanelOpen={contactPanelOpen}
