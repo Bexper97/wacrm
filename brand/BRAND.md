@@ -70,8 +70,9 @@ Slogans oficiais:
 ## Decisões já tomadas sobre o app
 
 - A área de **conversa do inbox imita o WhatsApp Web de propósito** (pedido do Gabriel: balões, fundo e lista). É uma exceção consciente à paleta.
-- Fora do chat (menu, configurações, painéis, favicon, e-mails), seguir esta paleta.
-- Pendente de alinhar à marca: o favicon atual (quadrado verde WhatsApp com "B") e os acentos verde `#00a884` da barra lateral e dos filtros. A marca pede violeta `#8858F1` e verde-limão `#B9F32E`.
+- Fora do chat (menu, configurações, painéis, favicon, e-mails), seguir esta paleta. **Já aplicado** em tokens (`src/app/globals.css`), menu lateral, cabeçalho, cartões, botões, login e gráficos: tema escuro sobre `#14082F`, linhas suaves (lavanda a ~10%), brilho violeta no fundo e limão como acento (`--lime`).
+- O inbox (lista, conversa, compositor, balões) mantém o visual do WhatsApp Web, com o verde `#00a884` apenas ali dentro.
+- Pendente: o favicon (quadrado verde WhatsApp com "B") ainda não segue a marca; falta o símbolo dos paralelogramos em arquivo separado.
 
 ## Checklist antes de entregar algo visual
 

@@ -204,7 +204,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       <aside
         className={cn(
           // Mobile: fixed drawer that slides in from the left.
-          "fixed inset-y-0 left-0 z-40 flex h-full w-64 flex-col border-r border-border bg-card",
+          "fixed inset-y-0 left-0 z-40 flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar/80 backdrop-blur-xl",
           "transition-transform duration-200 ease-out will-change-transform",
           open ? "translate-x-0" : "-translate-x-full",
           // Desktop: static, always visible — reset all the mobile framing.
@@ -217,12 +217,12 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             close button is hidden since the sidebar is always-visible. */}
         <div
           className={cn(
-            "flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4",
+            "flex h-14 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border/70 px-4",
             collapsed && "lg:justify-center lg:px-0",
           )}
         >
           <Link href="/dashboard" className="flex items-center gap-2" title={t("title")}>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#00a884] text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-primary to-[#341f71] text-foreground ring-1 ring-white/10 shadow-[0_6px_18px_-6px_var(--primary)]">
               <MessageSquare className="h-4 w-4" />
             </div>
             <span
@@ -272,7 +272,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                       "relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
                       collapsed && "lg:justify-center lg:px-0",
                       isActive
-                        ? "bg-[#d9fdd3] text-[#008069] dark:bg-[#103529] dark:text-[#25d366]"
+                        ? "bg-primary/15 text-foreground shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_30%,transparent)] before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[3px] before:rounded-full before:bg-lime"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
@@ -281,7 +281,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                       {t(item.labelKey as string)}
                     </span>
                     {collapsed && (showUnreadDot || showNotificationBadge) && (
-                      <span className="absolute right-3 top-1.5 hidden h-2 w-2 rounded-full bg-[#25d366] lg:block" />
+                      <span className="absolute right-3 top-1.5 hidden h-2 w-2 rounded-full bg-lime lg:block" />
                     )}
                     {item.beta && !collapsed && (
                       <span
@@ -296,15 +296,15 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                         aria-label={t("unreadConversations", { count: totalUnread })}
                         className={cn("relative flex h-2 w-2", hideWhenCollapsed)}
                       >
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#25d366] opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#25d366]" />
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lime opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-lime" />
                       </span>
                     )}
                     {showNotificationBadge && (
                       <span
                         aria-label={t("unreadNotifications", { count: unreadNotifications })}
                         className={cn(
-                          "flex h-5 min-w-5 items-center justify-center rounded-full bg-[#25d366] px-1 text-[10px] font-semibold text-white",
+                          "flex h-5 min-w-5 items-center justify-center rounded-full bg-lime px-1 text-[10px] font-semibold text-lime-foreground",
                           hideWhenCollapsed,
                         )}
                       >
@@ -317,7 +317,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             })}
           </ul>
 
-          <div className="my-4 border-t border-border" />
+          <div className="my-4 border-t border-sidebar-border/70" />
 
           <ul className="flex flex-col gap-1">
             {bottomNavItems.map((item) => {
@@ -331,7 +331,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                       "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
                       collapsed && "lg:justify-center lg:px-0",
                       isActive
-                        ? "bg-[#d9fdd3] text-[#008069] dark:bg-[#103529] dark:text-[#25d366]"
+                        ? "bg-primary/15 text-foreground shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_30%,transparent)]"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
@@ -371,7 +371,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </div>
 
         {/* User section */}
-        <div className="shrink-0 border-t border-border p-3">
+        <div className="shrink-0 border-t border-sidebar-border/70 p-3">
           {/* Account name display — surfaced only when the account
               name differs from the user's own name (see
               `showAccountStrip`). For a default solo account the two

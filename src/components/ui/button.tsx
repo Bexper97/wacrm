@@ -8,7 +8,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        default:
+          "bg-linear-to-b from-primary to-[color-mix(in_oklab,var(--primary),#341f71_38%)] text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_8px_22px_-10px_var(--primary)] hover:brightness-110 [a]:hover:brightness-110",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:

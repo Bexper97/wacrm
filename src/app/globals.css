@@ -45,6 +45,8 @@
    * --card-2) as Tailwind utilities: bg-card-2, bg-primary-soft,
    * bg-primary-soft-2, hover:bg-primary-hover. */
   --color-card-2: var(--card-2);
+  --color-lime: var(--lime);
+  --color-lime-foreground: var(--lime-foreground);
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
   --color-primary-soft-2: var(--primary-soft-2);
@@ -84,81 +86,94 @@
  * project/Color Themes.html — change one, change the other.
  * ============================================================ */
 
-/* ---- MODE: neutral surfaces ---- */
+/* ---- MODE: neutral surfaces (Bexper brand — see brand/BRAND.md) ----
+ * Dark is built on #14082F (deep purple-black) with surfaces that step up
+ * toward #341F71. Lines are lavender at very low opacity so regions blend
+ * instead of breaking: borders are 8-11% (dark) / 8-10% (light), never solid. */
 
 :root,
 html[data-mode="dark"] {
-  --background: oklch(0.13 0.01 260);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.18 0.01 260);
-  --card-2: oklch(0.205 0.01 260);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.18 0.01 260);
-  --popover-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.22 0.01 260);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.22 0.01 260);
-  --muted-foreground: oklch(0.65 0.01 260);
-  --accent: oklch(0.22 0.01 260);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.28 0.01 260);
-  --input: oklch(0.28 0.01 260);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.16 0.01 260);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.22 0.01 260);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.28 0.01 260);
+  --background: #14082f;
+  --foreground: #f5f6fc;
+  --card: #1b0e3f;
+  --card-2: #22134f;
+  --card-foreground: #f5f6fc;
+  --popover: #1f1147;
+  --popover-foreground: #f5f6fc;
+  --secondary: #281858;
+  --secondary-foreground: #f5f6fc;
+  --muted: #281858;
+  --muted-foreground: #a99ecb;
+  --accent: #2d1b63;
+  --accent-foreground: #f5f6fc;
+  --destructive: #f0566a;
+  --border: rgba(201, 177, 253, 0.11);
+  --input: rgba(201, 177, 253, 0.16);
+  --chart-2: #b9f32e;
+  --chart-3: #c9b1fd;
+  --chart-4: #5b3fb8;
+  --chart-5: #341f71;
+  --radius: 0.875rem;
+  --sidebar: #170a38;
+  --sidebar-foreground: #f5f6fc;
+  --sidebar-accent: rgba(136, 88, 241, 0.16);
+  --sidebar-accent-foreground: #f5f6fc;
+  --sidebar-border: rgba(201, 177, 253, 0.08);
+  --lime: #b9f32e;
+  --lime-foreground: #14082f;
+  --glow-a: rgba(136, 88, 241, 0.22);
+  --glow-b: rgba(185, 243, 46, 0.05);
+  --grid-line: rgba(201, 177, 253, 0.028);
 }
 
 html[data-mode="light"] {
-  --background: oklch(0.99 0.002 260);
-  --foreground: oklch(0.21 0.01 260);
-  --card: oklch(1 0 0);
-  --card-2: oklch(0.985 0.002 260);
-  --card-foreground: oklch(0.21 0.01 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.01 260);
-  --secondary: oklch(0.967 0.003 260);
-  --secondary-foreground: oklch(0.25 0.01 260);
-  --muted: oklch(0.967 0.003 260);
-  --muted-foreground: oklch(0.52 0.015 260);
-  --accent: oklch(0.96 0.004 260);
-  --accent-foreground: oklch(0.25 0.01 260);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0.004 260);
-  --input: oklch(0.922 0.004 260);
-  --chart-2: oklch(0.6 0.1 260);
-  --chart-3: oklch(0.7 0.06 260);
-  --chart-4: oklch(0.8 0.04 260);
-  --chart-5: oklch(0.87 0.03 260);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0.002 260);
-  --sidebar-foreground: oklch(0.21 0.01 260);
-  --sidebar-accent: oklch(0.96 0.004 260);
-  --sidebar-accent-foreground: oklch(0.25 0.01 260);
-  --sidebar-border: oklch(0.922 0.004 260);
+  --background: #f5f6fc;
+  --foreground: #14082f;
+  --card: #fbfbff;
+  --card-2: #f0f0fa;
+  --card-foreground: #14082f;
+  --popover: #fbfbff;
+  --popover-foreground: #14082f;
+  --secondary: #ecebf8;
+  --secondary-foreground: #341f71;
+  --muted: #ecebf8;
+  --muted-foreground: #6b6190;
+  --accent: #e6e1f8;
+  --accent-foreground: #341f71;
+  --destructive: #d93c52;
+  --border: rgba(52, 31, 113, 0.1);
+  --input: rgba(52, 31, 113, 0.14);
+  --chart-2: #9bd91d;
+  --chart-3: #c9b1fd;
+  --chart-4: #5b3fb8;
+  --chart-5: #341f71;
+  --radius: 0.875rem;
+  --sidebar: #f0effa;
+  --sidebar-foreground: #14082f;
+  --sidebar-accent: rgba(136, 88, 241, 0.12);
+  --sidebar-accent-foreground: #341f71;
+  --sidebar-border: rgba(52, 31, 113, 0.08);
+  --lime: #b9f32e;
+  --lime-foreground: #14082f;
+  --glow-a: rgba(136, 88, 241, 0.14);
+  --glow-b: rgba(185, 243, 46, 0.1);
+  --grid-line: rgba(52, 31, 113, 0.035);
 }
 
 /* ---- ACCENT: primary color ---- */
 
 :root,
 html[data-theme="violet"] {
-  --primary: oklch(0.526 0.247 293);
-  --primary-foreground: oklch(0.985 0 0);
-  --primary-hover: oklch(0.6 0.22 293);
-  --primary-soft: oklch(0.526 0.247 293 / 0.12);
-  --primary-soft-2: oklch(0.526 0.247 293 / 0.2);
-  --ring: oklch(0.526 0.247 293);
-  --chart-1: oklch(0.526 0.247 293);
-  --sidebar-primary: oklch(0.526 0.247 293);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-ring: oklch(0.526 0.247 293);
+  --primary: #8858f1;
+  --primary-foreground: #f5f6fc;
+  --primary-hover: #9b73f5;
+  --primary-soft: rgba(136, 88, 241, 0.14);
+  --primary-soft-2: rgba(136, 88, 241, 0.24);
+  --ring: #8858f1;
+  --chart-1: #8858f1;
+  --sidebar-primary: #8858f1;
+  --sidebar-primary-foreground: #f5f6fc;
+  --sidebar-ring: #8858f1;
 }
 
 html[data-theme="emerald"] {
@@ -220,11 +235,39 @@ html[data-theme="rose"] {
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
   }
   body {
     @apply bg-background text-foreground;
+    /* Soft violet glow top-right, a hint of lime bottom-left and a very faint
+     * grid — gives depth without hard region changes. */
+    background-image:
+      radial-gradient(1100px 560px at 88% -8%, var(--glow-a), transparent 62%),
+      radial-gradient(820px 480px at -8% 108%, var(--glow-b), transparent 58%),
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: auto, auto, 44px 44px, 44px 44px;
+    background-attachment: fixed;
   }
   html {
     @apply font-sans;
   }
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 40%, transparent);
+  }
+  h1, h2, h3 {
+    letter-spacing: -0.02em;
+  }
+  .tabular-nums, [data-slot="card"] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Brand helpers */
+.text-gradient-brand {
+  background: linear-gradient(90deg, var(--primary), var(--lime));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }

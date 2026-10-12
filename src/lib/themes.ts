@@ -70,8 +70,8 @@ export const THEMES: ReadonlyArray<ThemeMeta> = [
   {
     id: "violet",
     name: "Violet",
-    tagline: "The default — confident, slightly playful.",
-    swatch: "oklch(0.526 0.247 293)",
+    tagline: "The Bexper brand violet — the default.",
+    swatch: "#8858f1",
   },
   {
     id: "emerald",
