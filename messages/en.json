@@ -2158,6 +2158,8 @@
     "summaryFailed": "Could not send the summary: {reason}",
     "save": "Save",
     "saved": "Settings saved",
-    "saveFailed": "Could not save"
+    "saveFailed": "Could not save",
+    "saveFailedReason": "Could not save: {reason}",
+    "missingMigration": "The database does not have the alert tables yet. Run the 048 migration SQL in Supabase and reload this page."
   }
 }

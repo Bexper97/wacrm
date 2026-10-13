@@ -2140,6 +2140,8 @@
     "summaryFailed": "No se pudo enviar el resumen: {reason}",
     "save": "Guardar",
     "saved": "Configuración guardada",
-    "saveFailed": "No se pudo guardar"
+    "saveFailed": "No se pudo guardar",
+    "saveFailedReason": "No se pudo guardar: {reason}",
+    "missingMigration": "La base de datos aún no tiene las tablas de alertas. Ejecuta el SQL de la migración 048 en Supabase y recarga esta página."
   }
 }

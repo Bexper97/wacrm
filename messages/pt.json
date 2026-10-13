@@ -2140,6 +2140,8 @@
     "summaryFailed": "Não foi possível enviar o resumo: {reason}",
     "save": "Salvar",
     "saved": "Configurações salvas",
-    "saveFailed": "Não foi possível salvar"
+    "saveFailed": "Não foi possível salvar",
+    "saveFailedReason": "Não foi possível salvar: {reason}",
+    "missingMigration": "O banco ainda não tem as tabelas dos alertas. Rode o SQL da migração 048 no Supabase e recarregue esta página."
   }
 }

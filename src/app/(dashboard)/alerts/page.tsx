@@ -94,6 +94,7 @@ export default function AlertsPage() {
   const [instances, setInstances] = useState<{ id: string; label: string }[]>([]);
   const [savingSettings, setSavingSettings] = useState(false);
   const [sendingSummary, setSendingSummary] = useState(false);
+  const [missingTables, setMissingTables] = useState(false);
 
   const load = useCallback(async () => {
     if (!accountId) return;
@@ -120,6 +121,9 @@ export default function AlertsPage() {
         .eq("status", "open"),
     ]);
 
+    if (list.error && (list.error.code === "PGRST205" || list.error.code === "42P01" || /conversation_alerts/.test(list.error.message))) {
+      setMissingTables(true);
+    }
     setAlerts(
       ((list.data ?? []) as unknown as AlertRow[]).map((a) => ({
         ...a,
@@ -201,23 +205,25 @@ export default function AlertsPage() {
   }
 
   async function saveSettings() {
-    if (!accountId) return;
     setSavingSettings(true);
-    const { error } = await createClient()
-      .from("alert_settings")
-      .upsert({
-        account_id: accountId,
-        unanswered_minutes: Math.min(1440, Math.max(5, Number(settings.unanswered_minutes) || 60)),
-        ai_scan_enabled: settings.ai_scan_enabled,
-        summary_enabled: settings.summary_enabled,
-        summary_phone: settings.summary_phone.replace(/[^\d+]/g, "") || null,
-        summary_instance_id: settings.summary_instance_id || null,
-        summary_hour: settings.summary_hour,
-        updated_at: new Date().toISOString(),
+    try {
+      const res = await fetch("/api/alerts/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
       });
-    setSavingSettings(false);
-    if (error) return void toast.error(t("saveFailed"));
-    toast.success(t("saved"));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.code === "missing_migration") setMissingTables(true);
+        toast.error(t("saveFailedReason", { reason: data.error ?? `HTTP ${res.status}` }));
+        return;
+      }
+      toast.success(t("saved"));
+    } catch {
+      toast.error(t("saveFailed"));
+    } finally {
+      setSavingSettings(false);
+    }
   }
 
   async function sendSummaryNow() {
@@ -271,6 +277,13 @@ export default function AlertsPage() {
           {scanning ? t("scanning") : t("scanNow")}
         </Button>
       </div>
+
+      {missingTables && (
+        <Card className="flex-row items-start gap-3 border-amber-500/40 px-4 text-sm text-foreground">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+          <p>{t("missingMigration")}</p>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {tiles.map((tile) => (
