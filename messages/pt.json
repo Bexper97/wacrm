@@ -17,6 +17,8 @@
   "Sidebar": {
     "title": "Central de conversas Portal Temper",
     "primaryNav": "Principal",
+    "mobileNav": "Navegação rápida",
+    "more": "Menu",
     "dashboard": "Painel",
     "inbox": "Caixa de entrada",
     "notifications": "Notificações",
@@ -160,7 +162,8 @@
   },
   "Inbox": {
     "page": {
-      "whatsappNotConnected": "O WhatsApp® não está conectado. Vá em Configurações para conectar sua conta."
+      "whatsappNotConnected": "O WhatsApp® não está conectado. Vá em Configurações para conectar sua conta.",
+      "contactSheetTitle": "Informações do contato"
     },
     "conversationList": {
       "searchPlaceholder": "Buscar por nome ou número...",
@@ -2126,7 +2129,8 @@
     "addSection": "Adicionar seção"
   },
   "DashboardShell": {
-    "loading": "Carregando..."
+    "loading": "Carregando...",
+    "skipToContent": "Pular para o conteúdo"
   },
   "Alerts": {
     "title": "Alertas",

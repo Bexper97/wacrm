@@ -32,6 +32,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [{ url: "/icon" }],
+    apple: [{ url: "/pwa-icon/180", sizes: "180x180" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "BEX",
+    statusBarStyle: "black-translucent",
   },
   formatDetection: {
     email: false,
@@ -41,7 +47,15 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#020617",
+  width: "device-width",
+  initialScale: 1,
+  // Draw under the notch / home bar; the layout pads with env(safe-area-*).
+  // Zoom is deliberately NOT disabled — pinch-zoom is an accessibility need.
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F5F6FC" },
+    { media: "(prefers-color-scheme: dark)", color: "#14082F" },
+  ],
   colorScheme: "dark light",
 };
 

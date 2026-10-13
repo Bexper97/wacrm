@@ -254,6 +254,34 @@ html[data-theme="rose"] {
   }
   html {
     @apply font-sans;
+    /* Stop iOS from re-scaling text after rotation; keeps user zoom intact. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  /* Keyboard users always get a visible focus ring, even on controls whose
+   * component styles forgot one. Mouse/touch focus stays clean. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  /* No grey flash on tap; the components have their own pressed states. */
+  a, button, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Respect "reduce motion" (vestibular disorders, battery saver). */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  /* Fixed gradient backgrounds repaint on every scroll frame on phones. */
+  @media (max-width: 1023px) {
+    body {
+      background-attachment: scroll;
+    }
   }
   /* Native <select> popups are drawn by the browser: give them theme colors so
    * options stay readable in dark mode (color-scheme above handles the rest). */

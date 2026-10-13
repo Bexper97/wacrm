@@ -23,6 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/lib/toast";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 import { contactHandle } from "@/lib/whatsapp/wa-identity";
 import { ConversationMedia } from "./conversation-media";
 
@@ -34,6 +35,8 @@ interface ContactSidebarProps {
   conversationId?: string | null;
   /** Bumps when the thread changes so the media counts refresh. */
   mediaRefreshKey?: number;
+  /** Width override — the mobile sheet passes `w-full`; the desktop panel keeps `w-70`. */
+  className?: string;
 }
 
 type StageOption = { id: string; name: string; color: string; position: number };
@@ -63,13 +66,14 @@ function formatMoney(value: number, currency?: string | null): string {
 }
 
 const FIELD =
-  "w-full rounded-md border border-border bg-muted px-2 py-1.5 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-primary/50";
+  "w-full rounded-md border border-border bg-muted px-2 py-1.5 text-base text-foreground placeholder-muted-foreground outline-none focus:border-primary/50 lg:text-xs";
 
 export function ContactSidebar({
   contact,
   onContactUpdated,
   conversationId,
   mediaRefreshKey,
+  className,
 }: ContactSidebarProps) {
   const tSidebar = useTranslations("Inbox.sidebar");
   const tThread = useTranslations("Inbox.messageThread");
@@ -388,8 +392,8 @@ export function ContactSidebar({
     "flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-background hover:text-foreground";
 
   return (
-    <div className="flex h-full w-70 flex-col border-l border-border bg-card">
-      <ScrollArea className="flex-1">
+    <div className={cn("flex h-full w-70 flex-col border-l border-border bg-card", className)}>
+      <ScrollArea className="flex-1 min-h-0">
         <div className="p-4">
           {/* Contact Info */}
           <div className="flex flex-col items-center text-center">

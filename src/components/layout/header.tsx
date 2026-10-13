@@ -17,6 +17,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ModeToggle } from "@/components/layout/mode-toggle";
+import { useChatOpen } from "@/hooks/use-chat-open";
+import { cn } from "@/lib/utils";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "dashboard",
@@ -51,6 +53,9 @@ export function Header({ onOpenSidebar }: HeaderProps) {
   const pathname = usePathname();
   const { profile, signOut } = useAuth();
   const titleKey = getPageTitleKey(pathname);
+  // Phone + open conversation: the thread owns the whole screen (back arrow
+  // lives in the thread header), so this bar steps aside.
+  const chatOpen = useChatOpen();
 
   const initial =
     profile?.full_name?.charAt(0)?.toUpperCase() ??
@@ -59,9 +64,11 @@ export function Header({ onOpenSidebar }: HeaderProps) {
 
   return (
     <header
-      className={`flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border/40 bg-background/50 px-4 backdrop-blur-xl lg:px-6 ${
-        pathname.startsWith("/inbox") ? "lg:hidden" : ""
-      }`}
+      className={cn(
+        "flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-border/40 bg-background/50 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-xl lg:px-6",
+        pathname.startsWith("/inbox") && "lg:hidden",
+        chatOpen && "max-lg:hidden",
+      )}
     >
       <div className="flex min-w-0 items-center gap-2">
         {/* Hamburger — mobile only. 44×44 hit target per Apple HIG. */}

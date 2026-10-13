@@ -6,8 +6,6 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase/client";
-import { useTotalUnread } from "@/hooks/use-total-unread";
-import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import {
   Bell,
   Bot,
@@ -117,18 +115,24 @@ interface SidebarProps {
   /** Controlled on mobile by the Header's hamburger button. Ignored on lg+. */
   open?: boolean;
   onClose?: () => void;
+  /** Badge counts, owned by the shell so the realtime channels open once. */
+  totalUnread?: number;
+  unreadNotifications?: number;
 }
 
 import { useTranslations } from "next-intl";
 
 const SIDEBAR_COLLAPSED_KEY = "wacrm:sidebar-collapsed";
 
-export function Sidebar({ open = false, onClose }: SidebarProps) {
+export function Sidebar({
+  open = false,
+  onClose,
+  totalUnread = 0,
+  unreadNotifications = 0,
+}: SidebarProps) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
   const { profile, profileLoading, account, accountRole, signOut, canManageMembers, accountId } = useAuth();
-  const totalUnread = useTotalUnread();
-  const unreadNotifications = useUnreadNotifications();
 
   // Open alerts badge — admins only (RLS already hides alerts from everyone else).
   const [openAlerts, setOpenAlerts] = useState(0);
@@ -231,7 +235,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       <aside
         className={cn(
           // Mobile: fixed drawer that slides in from the left.
-          "fixed inset-y-0 left-0 z-40 flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar/80 backdrop-blur-xl",
+          "fixed inset-y-0 left-0 z-40 flex h-full w-64 max-w-[85vw] flex-col border-r border-sidebar-border bg-sidebar/80 backdrop-blur-xl",
           "transition-transform duration-200 ease-out will-change-transform",
           open ? "translate-x-0" : "-translate-x-full",
           // Desktop: static, always visible — reset all the mobile framing.
@@ -409,7 +413,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </div>
 
         {/* User section */}
-        <div className="shrink-0 border-t border-sidebar-border/70 p-3">
+        <div className="shrink-0 border-t border-sidebar-border/70 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {/* Account name display — surfaced only when the account
               name differs from the user's own name (see
               `showAccountStrip`). For a default solo account the two

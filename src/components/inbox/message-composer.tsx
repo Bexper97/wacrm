@@ -825,7 +825,7 @@ export function MessageComposer({
             // The placeholder text also surfaces the read-only state.
             title={readOnly ? t("readOnlyTitle") : undefined}
             className={cn(
-              "flex-1 resize-none self-center border-0 bg-transparent px-2 py-2 text-[15px] text-[#111b21] placeholder-[#667781] outline-none dark:text-[#e9edef] dark:placeholder-[#8696a0]",
+              "flex-1 resize-none self-center border-0 bg-transparent px-2 py-2 text-base text-[#111b21] sm:text-[15px] placeholder-[#667781] outline-none dark:text-[#e9edef] dark:placeholder-[#8696a0]",
               (sessionExpired || readOnly) && "cursor-not-allowed opacity-50"
             )}
           />
@@ -1088,7 +1088,7 @@ function MediaDraftPreview({
               }
             }}
             placeholder={t("addCaption")}
-            className="flex-1 rounded-xl border border-border bg-muted px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground outline-none transition-colors focus:border-primary/50"
+            className="flex-1 rounded-xl border border-border bg-muted px-4 py-2.5 text-base text-foreground placeholder-muted-foreground outline-none transition-colors focus:border-primary/50 sm:text-sm"
           />
         )}
         <GatedButton

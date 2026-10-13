@@ -17,6 +17,8 @@
   "Sidebar": {
     "title": "Portal Temper Conversation Center",
     "primaryNav": "Primary",
+    "mobileNav": "Quick navigation",
+    "more": "Menu",
     "dashboard": "Dashboard",
     "inbox": "Inbox",
     "notifications": "Notifications",
@@ -160,7 +162,8 @@
   },
   "Inbox": {
     "page": {
-      "whatsappNotConnected": "WhatsApp® is not connected. Go to Settings to connect your account."
+      "whatsappNotConnected": "WhatsApp® is not connected. Go to Settings to connect your account.",
+      "contactSheetTitle": "Contact details"
     },
     "conversationList": {
       "searchPlaceholder": "Search by name or number...",
@@ -2138,7 +2141,8 @@
     "addSection": "Add section"
   },
   "DashboardShell": {
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "skipToContent": "Skip to content"
   },
   "Alerts": {
     "title": "Alerts",

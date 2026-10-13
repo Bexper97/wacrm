@@ -24,6 +24,7 @@ import {
   Check,
   Clock,
   ArrowLeft,
+  Info,
   RefreshCw,
   PanelRightOpen,
   PanelRightClose,
@@ -110,6 +111,8 @@ interface MessageThreadProps {
    */
   contactPanelOpen?: boolean;
   onToggleContactPanel?: () => void;
+  /** Mobile-only: opens the contact panel as a sheet (the side panel is lg+). */
+  onOpenContactSheet?: () => void;
   /** Called after the conversation card was deleted, so the page can drop it. */
   onDeleted?: (conversationId: string) => void;
 }
@@ -177,6 +180,7 @@ export function MessageThread({
   contactPanelOpen,
   onToggleContactPanel,
   onDeleted,
+  onOpenContactSheet,
 }: MessageThreadProps) {
   const t = useTranslations("Inbox.messageThread");
   const dateLocale = dateLocaleFor(useLocale());
@@ -1006,7 +1010,7 @@ export function MessageThread({
     <div className={cn("flex min-w-0 flex-1 flex-col", DOODLE_BG_CLASSES)}>
       {/* Header — solid card surface sits on top of the doodle so the
           name/avatar/dropdowns stay legible. */}
-      <div className="flex items-center justify-between gap-2 bg-white px-3 py-2.5 shadow-sm dark:bg-[#202c33] sm:px-4">
+      <div className="flex items-center justify-between gap-2 bg-white px-3 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] shadow-sm dark:bg-[#202c33] sm:px-4">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {/* Back-to-list button — mobile only. Hidden on lg+ where the
               conversation list is always visible next to the thread. */}
@@ -1015,7 +1019,7 @@ export function MessageThread({
               type="button"
               onClick={onBack}
               aria-label={t("backToConversations")}
-              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -1054,7 +1058,21 @@ export function MessageThread({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          {/* Contact info — mobile only. The permanent side panel is
+              desktop-only, so on phones this opens it as a full-height sheet. */}
+          {onOpenContactSheet && (
+            <button
+              type="button"
+              onClick={onOpenContactSheet}
+              aria-label={t("showContactPanel")}
+              title={t("showContact")}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+            >
+              <Info className="h-5 w-5" />
+            </button>
+          )}
+
           {/* Contact-panel toggle — desktop only. The contact sidebar
               eats a chunk of horizontal width that crowds the thread on
               smaller laptops; this lets agents reclaim it when they just
@@ -1095,7 +1113,7 @@ export function MessageThread({
               aria-label={t("refreshConversation")}
               title={t("refresh")}
               className={cn(
-                "inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60",
+                "inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60 sm:h-7 sm:w-7",
               )}
             >
               <RefreshCw
@@ -1107,7 +1125,7 @@ export function MessageThread({
           {/* Status dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger className={cn(
-                  "inline-flex items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
+                  "inline-flex items-center justify-center h-10 gap-1 px-2 text-xs rounded-md hover:bg-muted sm:h-7",
                   currentStatus?.color ?? "text-muted-foreground"
                 )}>
                 {currentStatus ? t(`status${currentStatus.label}`) : t("status")}
@@ -1133,7 +1151,7 @@ export function MessageThread({
           <DropdownMenu>
             <DropdownMenuTrigger
               className={cn(
-                "inline-flex items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
+                "inline-flex items-center justify-center h-10 gap-1 px-2 text-xs rounded-md hover:bg-muted sm:h-7",
                 assignedAgentId ? "text-primary" : "text-muted-foreground"
               )}
             >

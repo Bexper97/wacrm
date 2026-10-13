@@ -13,6 +13,12 @@ import { useRealtime } from "@/hooks/use-realtime";
 import { ConversationList } from "@/components/inbox/conversation-list";
 import { MessageThread } from "@/components/inbox/message-thread";
 import { ContactSidebar } from "@/components/inbox/contact-sidebar";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { toast } from "@/lib/toast";
 import { WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -69,6 +75,8 @@ function InboxPageInner() {
    * below reconciles to the stored value right after mount instead.
    */
   const [contactPanelOpen, setContactPanelOpen] = useState(true);
+  // Phones get the contact panel as a slide-over sheet instead.
+  const [contactSheetOpen, setContactSheetOpen] = useState(false);
   useEffect(() => {
     try {
       const stored = localStorage.getItem(CONTACT_PANEL_STORAGE_KEY);
@@ -530,6 +538,23 @@ function InboxPageInner() {
   }, [router]);
 
 
+  // Shared by the desktop panel and the mobile sheet.
+  const handleContactUpdated = useCallback((updated: Contact) => {
+    setActiveContact(updated);
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.contact_id === updated.id
+          ? { ...c, contact: { ...c.contact, ...updated } }
+          : c,
+      ),
+    );
+    setActiveConversation((prev) =>
+      prev && prev.contact_id === updated.id
+        ? { ...prev, contact: { ...prev.contact, ...updated } }
+        : prev,
+    );
+  }, []);
+
   const handleMessagesLoaded = useCallback((loaded: Message[]) => {
     setMessages(loaded);
   }, []);
@@ -591,7 +616,10 @@ function InboxPageInner() {
 
   return (
     <div
-      className="-m-4 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden sm:-m-6 lg:h-screen"
+      // Fills <main> (which is the flex-1 area between the header and the
+      // mobile tab bar) and cancels its padding — no vh maths, so the
+      // browser address bar / bottom nav can't push the composer off-screen.
+      className="-m-4 flex h-[calc(100%+2rem)] flex-col overflow-hidden sm:-m-6 sm:h-[calc(100%+3rem)]"
       style={
         {
           "--primary": "#00a884",
@@ -665,6 +693,7 @@ function InboxPageInner() {
             onRefresh={handleManualRefresh}
             contactPanelOpen={contactPanelOpen}
             onToggleContactPanel={handleToggleContactPanel}
+            onOpenContactSheet={() => setContactSheetOpen(true)}
           />
         </div>
 
@@ -678,25 +707,35 @@ function InboxPageInner() {
               contact={activeContact}
               conversationId={activeConversation?.id ?? null}
               mediaRefreshKey={messages.length}
-              onContactUpdated={(updated) => {
-                setActiveContact(updated);
-                setConversations((prev) =>
-                  prev.map((c) =>
-                    c.contact_id === updated.id
-                      ? { ...c, contact: { ...c.contact, ...updated } }
-                      : c,
-                  ),
-                );
-                setActiveConversation((prev) =>
-                  prev && prev.contact_id === updated.id
-                    ? { ...prev, contact: { ...prev.contact, ...updated } }
-                    : prev,
-                );
-              }}
+              onContactUpdated={handleContactUpdated}
             />
           </div>
         )}
       </div>
+
+      {/* Mobile: the same contact panel as a full-width slide-over. Only
+          mounted while open so its data fetches don't run for nothing. */}
+      <Sheet open={contactSheetOpen} onOpenChange={setContactSheetOpen}>
+        <SheetContent
+          side="right"
+          showCloseButton
+          className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-sm lg:hidden"
+        >
+          <SheetTitle className="sr-only">{t("contactSheetTitle")}</SheetTitle>
+          <SheetDescription className="sr-only">
+            {t("contactSheetTitle")}
+          </SheetDescription>
+          {contactSheetOpen && (
+            <ContactSidebar
+              contact={activeContact}
+              conversationId={activeConversation?.id ?? null}
+              mediaRefreshKey={messages.length}
+              onContactUpdated={handleContactUpdated}
+              className="w-full border-l-0"
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
