@@ -1878,7 +1878,7 @@
     },
     "aiConfig": {
       "title": "Configuración del agente",
-      "description": "Usa tu propia clave de OpenAI o Anthropic. BEX llama al proveedor directamente con tu clave: sin cargos de IA por usuario, y tus datos siguen siendo tuyos. Esto impulsa las respuestas redactadas con IA en la bandeja de entrada, el bot de respuesta automática y el Playground.",
+      "description": "Usa tu propia clave de OpenAI, Anthropic o Google (Gemini). BEX llama al proveedor directamente con tu clave: sin cargos de IA por usuario, y tus datos siguen siendo tuyos. Esto impulsa las respuestas redactadas con IA en la bandeja de entrada, el bot de respuesta automática y el Playground.",
       "adminOnlyConfig": "Solo los administradores y propietarios pueden cambiar la configuración de IA.",
       "loadFailed": "Error al cargar la configuración de IA",
       "providerAndKey": "Proveedor y clave",
@@ -2134,6 +2134,10 @@
     "aiUsing": "IA usada: {provider} · {model}",
     "aiNone": "No hay clave de IA guardada.",
     "aiConfigure": "Configurar en Agentes de IA",
+    "aiModel": "Modelo del análisis (opcional)",
+    "aiModelPlaceholder": "Igual al de Agentes de IA",
+    "aiModelEconomy": "Usar el más económico: {model}",
+    "aiModelHint": "Un modelo menor reduce el costo del análisis. Déjalo vacío para usar el mismo modelo de Agentes de IA. Si el análisis falla, revisa el nombre exacto del modelo en el sitio del proveedor.",
     "summaryEnabled": "Enviar resumen diario por WhatsApp (días hábiles)",
     "summaryPhone": "Teléfono que lo recibe (con código de país)",
     "summaryNumber": "Enviar desde el número",
@@ -2145,6 +2149,6 @@
     "saved": "Configuración guardada",
     "saveFailed": "No se pudo guardar",
     "saveFailedReason": "No se pudo guardar: {reason}",
-    "missingMigration": "La base de datos aún no tiene las tablas de alertas. Ejecuta el SQL de la migración 048 en Supabase y recarga esta página."
+    "missingMigration": "Faltan tablas o columnas de alertas en la base de datos. Ejecuta los SQL de las migraciones 048 y 049 en Supabase y recarga esta página."
   }
 }

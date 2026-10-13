@@ -17,6 +17,10 @@ export async function PUT(request: Request) {
     const phone = String(body.summary_phone ?? '').replace(/[^\d]/g, '')
     const instanceId = body.summary_instance_id ? String(body.summary_instance_id) : null
     const summaryEnabled = body.summary_enabled === true
+    const aiModel = String(body.ai_model ?? '').trim()
+    if (aiModel && !/^[A-Za-z0-9._:\/-]{2,100}$/.test(aiModel)) {
+      return NextResponse.json({ error: 'Nome de modelo inválido.', code: 'invalid' }, { status: 400 })
+    }
 
     if (summaryEnabled && (phone.length < 10 || !instanceId)) {
       return NextResponse.json(
@@ -50,16 +54,22 @@ export async function PUT(request: Request) {
       summary_phone: phone || null,
       summary_instance_id: instanceId,
       summary_hour: hour,
+      ai_model: aiModel || null,
       updated_at: new Date().toISOString(),
     })
 
     if (error) {
       console.error('[alerts/settings] upsert failed:', error.code, error.message)
-      const missingTable = error.code === 'PGRST205' || error.code === '42P01' || /alert_settings/.test(error.message)
+      const missingTable =
+        error.code === 'PGRST205' ||
+        error.code === 'PGRST204' ||
+        error.code === '42P01' ||
+        error.code === '42703' ||
+        /alert_settings|ai_model/.test(error.message)
       return NextResponse.json(
         {
           error: missingTable
-            ? 'As tabelas dos alertas ainda não existem no Supabase. Rode o SQL da migração 048.'
+            ? 'Faltam tabelas ou colunas dos alertas no Supabase. Rode os SQLs das migrações 048 e 049.'
             : error.message,
           code: missingTable ? 'missing_migration' : 'db_error',
         },

@@ -24,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AI_MODEL_SUGGESTIONS, AI_PROVIDER_ECONOMY_MODEL } from "@/lib/ai/defaults";
+import type { AiProvider } from "@/lib/ai/types";
 
 type Status = "open" | "resolved" | "false_positive";
 type Kind = "unanswered" | "suspicious";
@@ -54,6 +56,7 @@ interface Settings {
   summary_phone: string;
   summary_instance_id: string;
   summary_hour: number;
+  ai_model: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -63,6 +66,7 @@ const DEFAULT_SETTINGS: Settings = {
   summary_phone: "",
   summary_instance_id: "",
   summary_hour: 18,
+  ai_model: "",
 };
 
 const SEVERITY_STYLE: Record<Severity, string> = {
@@ -170,6 +174,7 @@ export default function AlertsPage() {
           summary_phone: cfg.data.summary_phone ?? "",
           summary_instance_id: cfg.data.summary_instance_id ?? "",
           summary_hour: cfg.data.summary_hour,
+          ai_model: cfg.data.ai_model ?? "",
         });
       }
     })();
@@ -437,7 +442,12 @@ export default function AlertsPage() {
                   {aiInfo ? (
                     <span className="text-muted-foreground">
                       {t("aiUsing", {
-                        provider: aiInfo.provider === "anthropic" ? "Anthropic" : "OpenAI",
+                        provider:
+                          aiInfo.provider === "anthropic"
+                            ? "Anthropic"
+                            : aiInfo.provider === "google"
+                              ? "Google Gemini"
+                              : "OpenAI",
                         model: aiInfo.model,
                       })}
                     </span>
@@ -451,6 +461,42 @@ export default function AlertsPage() {
               )}
             </span>
           </label>
+
+          {aiInfo && (
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="alert-model">{t("aiModel")}</Label>
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  id="alert-model"
+                  list="alert-model-suggestions"
+                  className="min-w-56 flex-1"
+                  placeholder={t("aiModelPlaceholder")}
+                  value={settings.ai_model}
+                  onChange={(e) => setSettings({ ...settings, ai_model: e.target.value })}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    setSettings({
+                      ...settings,
+                      ai_model: AI_PROVIDER_ECONOMY_MODEL[aiInfo.provider as AiProvider] ?? "",
+                    })
+                  }
+                >
+                  {t("aiModelEconomy", {
+                    model: AI_PROVIDER_ECONOMY_MODEL[aiInfo.provider as AiProvider] ?? "",
+                  })}
+                </Button>
+              </div>
+              <datalist id="alert-model-suggestions">
+                {(AI_MODEL_SUGGESTIONS[aiInfo.provider as AiProvider] ?? []).map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
+              <p className="text-xs text-muted-foreground">{t("aiModelHint")}</p>
+            </div>
+          )}
         </div>
 
         <div className="space-y-3 rounded-xl border border-border p-4">

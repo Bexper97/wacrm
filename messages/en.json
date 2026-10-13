@@ -1896,7 +1896,7 @@
     },
     "aiConfig": {
       "title": "Agent setup",
-      "description": "Bring your own OpenAI or Anthropic key. BEX calls the provider directly with your key — no per-seat AI fees, and your data stays yours. This powers AI-drafted replies in the inbox, the auto-reply bot, and the Playground.",
+      "description": "Bring your own OpenAI, Anthropic or Google (Gemini) key. BEX calls the provider directly with your key — no per-seat AI fees, and your data stays yours. This powers AI-drafted replies in the inbox, the auto-reply bot, and the Playground.",
       "adminOnlyConfig": "Only admins and owners can change the AI configuration.",
       "loadFailed": "Failed to load AI configuration",
       "providerAndKey": "Provider & key",
@@ -2152,6 +2152,10 @@
     "aiUsing": "AI used: {provider} · {model}",
     "aiNone": "No AI key saved.",
     "aiConfigure": "Set up in AI Agents",
+    "aiModel": "Analysis model (optional)",
+    "aiModelPlaceholder": "Same as the AI Agents model",
+    "aiModelEconomy": "Use the cheapest: {model}",
+    "aiModelHint": "A smaller model lowers the analysis cost. Leave blank to use the same model as the AI Agents. If the analysis errors, check the exact model name on the provider's site.",
     "summaryEnabled": "Send a daily WhatsApp summary (business days)",
     "summaryPhone": "Phone that receives it (with country code)",
     "summaryNumber": "Send from number",
@@ -2163,6 +2167,6 @@
     "saved": "Settings saved",
     "saveFailed": "Could not save",
     "saveFailedReason": "Could not save: {reason}",
-    "missingMigration": "The database does not have the alert tables yet. Run the 048 migration SQL in Supabase and reload this page."
+    "missingMigration": "The database is missing alert tables or columns. Run the 048 and 049 migration SQLs in Supabase and reload this page."
   }
 }

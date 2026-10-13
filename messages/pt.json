@@ -1878,7 +1878,7 @@
     },
     "aiConfig": {
       "title": "Configuração do agente",
-      "description": "Use sua própria chave da OpenAI ou da Anthropic. O BEX chama o provedor diretamente com a sua chave — sem taxas de IA por usuário, e seus dados continuam seus. Isso alimenta as respostas redigidas por IA na caixa de entrada, o bot de resposta automática e o Playground.",
+      "description": "Use sua própria chave da OpenAI, da Anthropic ou do Google (Gemini). O BEX chama o provedor diretamente com a sua chave — sem taxas de IA por usuário, e seus dados continuam seus. Isso alimenta as respostas redigidas por IA na caixa de entrada, o bot de resposta automática e o Playground.",
       "adminOnlyConfig": "Somente administradores e proprietários podem alterar a configuração de IA.",
       "loadFailed": "Falha ao carregar a configuração de IA",
       "providerAndKey": "Provedor e chave",
@@ -2134,6 +2134,10 @@
     "aiUsing": "IA usada: {provider} · {model}",
     "aiNone": "Nenhuma chave de IA cadastrada.",
     "aiConfigure": "Configurar em Agentes de IA",
+    "aiModel": "Modelo da análise (opcional)",
+    "aiModelPlaceholder": "Igual ao dos Agentes de IA",
+    "aiModelEconomy": "Usar o mais econômico: {model}",
+    "aiModelHint": "Um modelo menor reduz o custo da análise. Deixe em branco para usar o mesmo modelo dos Agentes de IA. Se a análise der erro, confira o nome exato do modelo no site do provedor.",
     "summaryEnabled": "Enviar resumo diário por WhatsApp (dias úteis)",
     "summaryPhone": "Telefone que recebe (com DDI)",
     "summaryNumber": "Enviar pelo número",
@@ -2145,6 +2149,6 @@
     "saved": "Configurações salvas",
     "saveFailed": "Não foi possível salvar",
     "saveFailedReason": "Não foi possível salvar: {reason}",
-    "missingMigration": "O banco ainda não tem as tabelas dos alertas. Rode o SQL da migração 048 no Supabase e recarregue esta página."
+    "missingMigration": "Faltam tabelas ou colunas dos alertas no banco. Rode os SQLs das migrações 048 e 049 no Supabase e recarregue esta página."
   }
 }

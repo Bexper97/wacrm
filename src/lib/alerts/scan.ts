@@ -28,6 +28,8 @@ export interface AlertSettings {
   summary_instance_id: string | null
   summary_hour: number
   last_summary_on: string | null
+  /** Model used only by the content analysis; null = same as the AI agent. */
+  ai_model: string | null
 }
 
 export const DEFAULT_SETTINGS: AlertSettings = {
@@ -38,6 +40,7 @@ export const DEFAULT_SETTINGS: AlertSettings = {
   summary_instance_id: null,
   summary_hour: 18,
   last_summary_on: null,
+  ai_model: null,
 }
 
 export async function loadAlertSettings(db: SupabaseClient, accountId: string): Promise<AlertSettings> {
@@ -274,6 +277,7 @@ function labelFor(m: MsgRow & { message_id?: string | null }): string {
 export async function scanSuspicious(
   db: SupabaseClient,
   accountId: string,
+  modelOverride: string | null = null,
   now: Date = new Date(),
 ): Promise<Pick<ScanStats, 'conversationsAnalyzed' | 'suspiciousCreated' | 'skipped' | 'error'>> {
   let config
@@ -284,6 +288,8 @@ export async function scanSuspicious(
     return { conversationsAnalyzed: 0, suspiciousCreated: 0, error: err instanceof Error ? err.message : String(err) }
   }
   if (!config) return { conversationsAnalyzed: 0, suspiciousCreated: 0, skipped: 'ai_not_configured' }
+  // A cheaper model just for this task: same provider and key, different model.
+  if (modelOverride?.trim()) config = { ...config, model: modelOverride.trim() }
 
   const since = new Date(now.getTime() - AI_LOOKBACK_DAYS * 86_400_000).toISOString()
   const { data: convs } = await db
@@ -409,7 +415,7 @@ export async function runAlertScan(db: SupabaseClient, accountId: string): Promi
   stats.unansweredResolved = unanswered.unansweredResolved
 
   if (settings.ai_scan_enabled) {
-    const sus = await scanSuspicious(db, accountId)
+    const sus = await scanSuspicious(db, accountId, settings.ai_model)
     stats.conversationsAnalyzed = sus.conversationsAnalyzed
     stats.suspiciousCreated = sus.suspiciousCreated
     if (sus.skipped) stats.skipped = sus.skipped

@@ -13,6 +13,25 @@ import type { AiProvider } from './types'
 export const AI_PROVIDER_DEFAULT_MODEL: Record<AiProvider, string> = {
   openai: 'gpt-5.4-mini',
   anthropic: 'claude-haiku-4-5-20251001',
+  google: 'gemini-2.5-flash',
+}
+
+/**
+ * Cheapest sensible model per provider, suggested for high-volume background
+ * work such as the alert analysis. Editable in the UI: model names change, so
+ * check the provider's pricing page if one is rejected.
+ */
+export const AI_PROVIDER_ECONOMY_MODEL: Record<AiProvider, string> = {
+  openai: 'gpt-5.4-nano',
+  anthropic: 'claude-haiku-4-5-20251001',
+  google: 'gemini-2.5-flash-lite',
+}
+
+/** Extra model names offered as suggestions (never an allow-list). */
+export const AI_MODEL_SUGGESTIONS: Record<AiProvider, string[]> = {
+  openai: ['gpt-5.4-nano', 'gpt-5.4-mini', 'gpt-4o-mini'],
+  anthropic: ['claude-haiku-4-5-20251001'],
+  google: ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'],
 }
 
 /**
