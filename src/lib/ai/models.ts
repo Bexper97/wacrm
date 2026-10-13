@@ -62,8 +62,14 @@ export function pickEconomyModel(provider: AiProvider, models: string[]): string
     openai: [/nano/i, /mini/i],
     anthropic: [/haiku/i],
   }
+  // Prefer a stable, versioned name: "-latest" aliases silently change model (and cost),
+  // and preview/experimental ones can change or disappear.
+  const UNSTABLE = /latest|preview|exp|thinking|customtools/i
   for (const re of order[provider]) {
-    const hit = models.find((m) => re.test(m) && !/preview|exp|thinking/i.test(m)) ?? models.find((m) => re.test(m))
+    const hit =
+      models.find((m) => re.test(m) && /\d/.test(m) && !UNSTABLE.test(m)) ??
+      models.find((m) => re.test(m) && !/preview|exp|thinking/i.test(m)) ??
+      models.find((m) => re.test(m))
     if (hit) return hit
   }
   return null
