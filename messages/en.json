@@ -618,6 +618,12 @@
   },
   "Pipelines": {
     "page": {
+      "defaultPipelineName": "Sales Pipeline",
+      "defaultStageNewLead": "New Lead",
+      "defaultStageQualified": "Qualified",
+      "defaultStageProposal": "Proposal Sent",
+      "defaultStageNegotiation": "Negotiation",
+      "defaultStageWon": "Won",
       "selectPipeline": "Select Pipeline",
       "noPipelinesYet": "No pipelines yet",
       "managePipelines": "Manage Pipelines",

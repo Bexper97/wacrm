@@ -31,7 +31,7 @@ import {
   DollarSign,
   Loader2,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useTranslations } from "next-intl";
 
 interface DealFormProps {

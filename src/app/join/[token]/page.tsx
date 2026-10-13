@@ -25,7 +25,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { toast } from 'sonner';
+import { toast } from "@/lib/toast";
 import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,

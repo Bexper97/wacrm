@@ -15,7 +15,7 @@
 // ============================================================
 
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from "@/lib/toast";
 import { Copy, Loader2, MessageCircle, Sparkles } from 'lucide-react';
 
 import { Button, buttonVariants } from '@/components/ui/button';

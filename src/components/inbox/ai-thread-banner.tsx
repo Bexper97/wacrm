@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Sparkles, Hand, Undo2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/use-auth";
 

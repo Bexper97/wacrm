@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from "@/lib/toast";
 import { Loader2, KeyRound } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/client';

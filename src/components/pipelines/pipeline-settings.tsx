@@ -34,7 +34,7 @@ import {
   GripVertical,
   AlertTriangle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useTranslations } from "next-intl";
 
 const STAGE_COLORS = [

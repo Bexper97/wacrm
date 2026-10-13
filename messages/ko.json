@@ -618,6 +618,12 @@
   },
   "Pipelines": {
     "page": {
+      "defaultPipelineName": "영업 파이프라인",
+      "defaultStageNewLead": "신규 리드",
+      "defaultStageQualified": "적격",
+      "defaultStageProposal": "제안 발송",
+      "defaultStageNegotiation": "협상",
+      "defaultStageWon": "성사",
       "selectPipeline": "파이프라인 선택",
       "noPipelinesYet": "아직 파이프라인이 없습니다",
       "managePipelines": "파이프라인 관리",

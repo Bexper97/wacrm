@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { addContactTag, deleteContactTag } from '@/lib/contacts/tag-api';
-import { toast } from 'sonner';
+import { toast } from "@/lib/toast";
 import type { Contact, Tag, ContactTag } from '@/types';
 import {
   findExistingContact,

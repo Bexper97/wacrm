@@ -9,7 +9,7 @@ import { Bell, CheckCheck, Loader2, UserPlus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useLocale, useTranslations } from "next-intl";
 import { dateLocaleFor } from "@/lib/date-locale";
 

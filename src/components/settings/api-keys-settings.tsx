@@ -16,7 +16,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from "@/lib/toast";
 import { Copy, KeyRound, Loader2, Plus, Trash2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';

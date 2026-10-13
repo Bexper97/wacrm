@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from 'react';
 import { Bell, BellRing, CircleAlert, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from "@/lib/toast";
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/button';
