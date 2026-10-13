@@ -30,8 +30,9 @@ import {
   MoreVertical,
   Trash2,
 } from "lucide-react";
-import { format, isToday, isYesterday, differenceInHours } from "date-fns";
-import { useTranslations } from "next-intl";
+import { format, isToday, isYesterday, differenceInHours, type Locale } from "date-fns";
+import { dateLocaleFor } from "@/lib/date-locale";
+import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -113,11 +114,11 @@ interface MessageThreadProps {
   onDeleted?: (conversationId: string) => void;
 }
 
-function formatDateSeparator(dateStr: string, t: ReturnType<typeof useTranslations>): string {
+function formatDateSeparator(dateStr: string, t: ReturnType<typeof useTranslations>, locale: Locale): string {
   const date = new Date(dateStr);
   if (isToday(date)) return t("today");
   if (isYesterday(date)) return t("yesterday");
-  return format(date, "MMMM d, yyyy");
+  return format(date, "PPP", { locale });
 }
 
 function groupMessagesByDate(messages: Message[]) {
@@ -178,6 +179,7 @@ export function MessageThread({
   onDeleted,
 }: MessageThreadProps) {
   const t = useTranslations("Inbox.messageThread");
+  const dateLocale = dateLocaleFor(useLocale());
   const tTimer = useTranslations("Inbox.sessionTimer");
   const tQuote = useTranslations("Inbox.replyQuote");
 
@@ -1236,7 +1238,7 @@ export function MessageThread({
                 {/* Date separator */}
                 <div className="mb-4 flex items-center justify-center">
                   <span className="rounded-lg bg-white px-3 py-1 text-xs text-[#54656f] shadow-sm dark:bg-[#182229] dark:text-[#8696a0]">
-                    {formatDateSeparator(group.date, t)}
+                    {formatDateSeparator(group.date, t, dateLocale)}
                   </span>
                 </div>
                 {/* Messages */}

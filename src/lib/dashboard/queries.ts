@@ -319,6 +319,7 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
       id: `msg-${m.id}`,
       kind: 'message',
       text: `New message from ${who}`,
+      msg: { key: 'newMessage', params: { who: contact?.name || contact?.phone || null } },
       at: m.created_at,
       href: `/inbox?c=${m.conversation_id}`,
     })
@@ -329,6 +330,7 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
       id: `contact-${c.id}`,
       kind: 'contact',
       text: `New contact: ${c.name || c.phone}`,
+      msg: { key: 'newContact', params: { who: c.name || c.phone } },
       at: c.created_at,
       href: '/contacts',
     })
@@ -347,6 +349,9 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
       text: stage?.name
         ? `Deal "${d.title}" in ${stage.name}`
         : `Deal "${d.title}" updated`,
+      msg: stage?.name
+        ? { key: 'dealInStage', params: { title: d.title, stage: stage.name } }
+        : { key: 'dealUpdated', params: { title: d.title } },
       at: d.updated_at,
       href: '/pipelines',
     })
@@ -367,6 +372,10 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
       id: `broadcast-${b.id}`,
       kind: 'broadcast',
       text: `Broadcast "${b.name}" ${label}`,
+      msg:
+        b.status === 'sent'
+          ? { key: 'broadcastSent', params: { name: b.name, count: b.total_recipients } }
+          : { key: 'broadcastStatus', params: { name: b.name, status: b.status, count: b.total_recipients } },
       at: b.created_at,
       href: '/broadcasts',
     })
@@ -388,6 +397,10 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
       id: `auto-${l.id}`,
       kind: 'automation',
       text: `Automation "${autoName}" ${l.status === 'failed' ? 'failed for' : 'triggered for'} ${who}`,
+      msg: {
+        key: l.status === 'failed' ? 'autoFailed' : 'autoTriggered',
+        params: { name: automation?.name ?? null, who: contact?.name || contact?.phone || null },
+      },
       at: l.created_at,
     })
   }

@@ -42,6 +42,23 @@ import { useTranslations } from 'next-intl'
 
 export function ActivityFeed({ items, loading }: ActivityFeedProps) {
   const t = useTranslations('Dashboard.activityFeed')
+
+  // Localised sentence for an item; falls back to the stored English text.
+  const feedText = (it: ActivityItem): string => {
+    if (!it.msg) return it.text
+    const p = it.msg.params
+    const fallbackWho = it.kind === 'automation' ? t('items.aContact') : t('items.unknown')
+    const knownStatuses = ['draft', 'scheduled', 'sending', 'paused', 'failed', 'completed', 'sent']
+    const status = typeof p.status === 'string' ? p.status : ''
+    return t(`items.${it.msg.key}`, {
+      who: p.who ?? fallbackWho,
+      title: p.title ?? '',
+      stage: p.stage ?? '',
+      name: p.name ?? t('items.automationDefault'),
+      count: p.count ?? 0,
+      status: knownStatuses.includes(status) ? t(`items.status_${status}`) : status,
+    })
+  }
   // Start at 5 — a quick scan of the most recent events without
   // dominating vertical real estate. User expands explicitly via the
   // footer control when they want deeper history.
@@ -103,7 +120,7 @@ export function ActivityFeed({ items, loading }: ActivityFeedProps) {
                     <Icon className="h-3.5 w-3.5" />
                   </span>
                   <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                    {it.text}
+                    {feedText(it)}
                   </span>
                   <span className="flex-shrink-0 text-xs text-muted-foreground tabular-nums">
                     {relativeTime(it.at, t)}

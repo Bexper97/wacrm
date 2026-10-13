@@ -92,6 +92,26 @@
       "newAutomation": "Nueva automatización"
     },
     "activityFeed": {
+      "items": {
+        "newMessage": "Nuevo mensaje de {who}",
+        "newContact": "Nuevo contacto: {who}",
+        "dealInStage": "Negocio “{title}” en {stage}",
+        "dealUpdated": "Negocio “{title}” actualizado",
+        "broadcastSent": "Difusión “{name}” enviada a {count} contactos",
+        "broadcastStatus": "Difusión “{name}” {status} ({count} destinatarios)",
+        "autoFailed": "Automatización “{name}” falló para {who}",
+        "autoTriggered": "Automatización “{name}” activada para {who}",
+        "unknown": "Desconocido",
+        "aContact": "un contacto",
+        "automationDefault": "Automatización",
+        "status_draft": "borrador",
+        "status_scheduled": "programada",
+        "status_sending": "enviando",
+        "status_paused": "pausada",
+        "status_failed": "con error",
+        "status_completed": "completada",
+        "status_sent": "enviada"
+      },
       "title": "Actividad reciente",
       "viewAll": "Ver todo →",
       "noActivity": "Aún no hay actividad",
@@ -125,6 +145,7 @@
       "ariaLabel": "Valor del pipeline por etapa"
     },
     "responseTimeChart": {
+      "avgMinutes": "Promedio (min)",
       "title": "Tiempo promedio de primera respuesta",
       "description": "Minutos para responder al primer mensaje sin respuesta de un cliente, por día de la semana",
       "target": "objetivo {minutes}min",
@@ -524,6 +545,7 @@
       "toastCustomFieldsSaved": "Campos personalizados guardados",
       "toastCustomFieldsFailed": "Error al guardar los campos personalizados",
       "toastTemplateSent": "Plantilla \"{name}\" enviada",
+      "toastTemplateFailed": "Error al enviar la plantilla: {reason}",
       "toastTemplateFailed": "Error al enviar la plantilla: {reason}"
     },
     "importModal": {
@@ -734,6 +756,7 @@
       "unknown": "Desconocido"
     },
     "detail": {
+      "funnelTitle": "Embudo",
       "backToBroadcasts": "Volver a difusiones",
       "notFound": "Difusión no encontrada",
       "template": "Plantilla: {name}",
@@ -2155,5 +2178,25 @@
     "saveFailed": "No se pudo guardar",
     "saveFailedReason": "No se pudo guardar: {reason}",
     "missingMigration": "Faltan tablas o columnas de alertas en la base de datos. Ejecuta los SQL de las migraciones 048 y 049 en Supabase y recarga esta página."
+  },
+  "QuickReplies": {
+    "title": "Respuestas rápidas",
+    "description": "Fragmentos reutilizables — texto simple o un mensaje interactivo guardado — que los agentes pueden insertar desde el campo de mensaje de la bandeja de entrada.",
+    "newQuickReply": "Nueva respuesta rápida",
+    "editQuickReply": "Editar respuesta rápida",
+    "empty": "Aún no hay respuestas rápidas. Crea una para reutilizarla en varias conversaciones.",
+    "name": "Nombre",
+    "namePlaceholder": "ej.: Horario de atención",
+    "kindText": "Texto",
+    "kindInteractive": "Interactiva",
+    "textPlaceholder": "El texto del mensaje a insertar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "giveName": "Ponle un nombre a la respuesta rápida.",
+    "saveFailed": "No se pudo guardar la respuesta rápida.",
+    "updated": "Respuesta rápida actualizada.",
+    "created": "Respuesta rápida creada.",
+    "confirmDelete": "¿Eliminar esta respuesta rápida?",
+    "deleteFailed": "No se pudo eliminar la respuesta rápida."
   }
 }

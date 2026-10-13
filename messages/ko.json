@@ -92,6 +92,26 @@
       "newAutomation": "새 자동화"
     },
     "activityFeed": {
+      "items": {
+        "newMessage": "{who}의 새 메시지",
+        "newContact": "새 연락처: {who}",
+        "dealInStage": "거래 “{title}” — {stage}",
+        "dealUpdated": "거래 “{title}” 업데이트됨",
+        "broadcastSent": "브로드캐스트 “{name}”을(를) {count}명에게 발송",
+        "broadcastStatus": "브로드캐스트 “{name}” {status} (수신자 {count}명)",
+        "autoFailed": "자동화 “{name}”이(가) {who}에 대해 실패",
+        "autoTriggered": "자동화 “{name}”이(가) {who}에 대해 실행됨",
+        "unknown": "알 수 없음",
+        "aContact": "연락처",
+        "automationDefault": "자동화",
+        "status_draft": "초안",
+        "status_scheduled": "예약됨",
+        "status_sending": "발송 중",
+        "status_paused": "일시중지",
+        "status_failed": "실패",
+        "status_completed": "완료",
+        "status_sent": "발송됨"
+      },
       "title": "최근 활동",
       "viewAll": "전체 보기 →",
       "noActivity": "아직 활동이 없습니다",
@@ -125,6 +145,7 @@
       "ariaLabel": "단계별 파이프라인 금액"
     },
     "responseTimeChart": {
+      "avgMinutes": "평균(분)",
       "title": "평균 첫 응답 시간",
       "description": "요일별, 고객의 첫 미응답 메시지에 답변하기까지 걸린 시간(분)",
       "target": "목표 {minutes}분",
@@ -524,6 +545,7 @@
       "toastCustomFieldsSaved": "커스텀 필드가 저장되었습니다",
       "toastCustomFieldsFailed": "커스텀 필드를 저장하지 못했습니다",
       "toastTemplateSent": "\"{name}\" 템플릿을 보냈습니다",
+      "toastTemplateFailed": "템플릿 전송 실패: {reason}",
       "toastTemplateFailed": "템플릿을 보내지 못했습니다: {reason}"
     },
     "importModal": {
@@ -740,6 +762,7 @@
       "unknown": "알 수 없음"
     },
     "detail": {
+      "funnelTitle": "퍼널",
       "backToBroadcasts": "브로드캐스트로 돌아가기",
       "notFound": "브로드캐스트를 찾을 수 없습니다",
       "template": "템플릿: {name}",
@@ -2173,5 +2196,25 @@
     "saveFailed": "저장할 수 없습니다",
     "saveFailedReason": "저장할 수 없습니다: {reason}",
     "missingMigration": "데이터베이스에 알림 테이블 또는 열이 없습니다. Supabase에서 048, 049 마이그레이션 SQL을 실행한 뒤 이 페이지를 새로고침하세요."
+  },
+  "QuickReplies": {
+    "title": "빠른 답장",
+    "description": "재사용 가능한 문구 — 일반 텍스트 또는 저장된 인터랙티브 메시지 — 를 받은편지함 입력창에서 삽입할 수 있습니다.",
+    "newQuickReply": "새 빠른 답장",
+    "editQuickReply": "빠른 답장 편집",
+    "empty": "아직 빠른 답장이 없습니다. 여러 대화에서 재사용할 답장을 만드세요.",
+    "name": "이름",
+    "namePlaceholder": "예: 영업 시간",
+    "kindText": "텍스트",
+    "kindInteractive": "인터랙티브",
+    "textPlaceholder": "삽입할 메시지 텍스트",
+    "cancel": "취소",
+    "save": "저장",
+    "giveName": "빠른 답장에 이름을 지정하세요.",
+    "saveFailed": "빠른 답장을 저장할 수 없습니다.",
+    "updated": "빠른 답장이 업데이트되었습니다.",
+    "created": "빠른 답장이 생성되었습니다.",
+    "confirmDelete": "이 빠른 답장을 삭제할까요?",
+    "deleteFailed": "빠른 답장을 삭제할 수 없습니다."
   }
 }

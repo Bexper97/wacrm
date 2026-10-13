@@ -64,4 +64,6 @@ export interface ActivityItem {
   at: string
   /** Optional deep-link for the whole row (not all items have a target). */
   href?: string
+  /** Translatable form of `text`; the feed uses it when present. null params fall back to a generic label. */
+  msg?: { key: string; params: Record<string, string | number | null> }
 }

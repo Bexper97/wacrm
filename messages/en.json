@@ -92,6 +92,26 @@
       "newAutomation": "New Automation"
     },
     "activityFeed": {
+      "items": {
+        "newMessage": "New message from {who}",
+        "newContact": "New contact: {who}",
+        "dealInStage": "Deal “{title}” in {stage}",
+        "dealUpdated": "Deal “{title}” updated",
+        "broadcastSent": "Broadcast “{name}” sent to {count} contacts",
+        "broadcastStatus": "Broadcast “{name}” {status} ({count} recipients)",
+        "autoFailed": "Automation “{name}” failed for {who}",
+        "autoTriggered": "Automation “{name}” triggered for {who}",
+        "unknown": "Unknown",
+        "aContact": "a contact",
+        "automationDefault": "Automation",
+        "status_draft": "draft",
+        "status_scheduled": "scheduled",
+        "status_sending": "sending",
+        "status_paused": "paused",
+        "status_failed": "failed",
+        "status_completed": "completed",
+        "status_sent": "sent"
+      },
       "title": "Recent Activity",
       "viewAll": "View all →",
       "noActivity": "No activity yet",
@@ -125,6 +145,7 @@
       "ariaLabel": "Pipeline value by stage"
     },
     "responseTimeChart": {
+      "avgMinutes": "Average (min)",
       "title": "Average First Response Time",
       "description": "Minutes to reply to a customer's first unreplied message, by weekday",
       "target": "target {minutes}m",
@@ -524,6 +545,7 @@
       "toastCustomFieldsSaved": "Custom fields saved",
       "toastCustomFieldsFailed": "Failed to save custom fields",
       "toastTemplateSent": "Template \"{name}\" sent",
+      "toastTemplateFailed": "Failed to send template: {reason}",
       "toastTemplateFailed": "Failed to send template: {reason}"
     },
     "importModal": {
@@ -740,6 +762,7 @@
       "unknown": "Unknown"
     },
     "detail": {
+      "funnelTitle": "Funnel",
       "backToBroadcasts": "Back to Broadcasts",
       "notFound": "Broadcast not found",
       "template": "Template: {name}",
@@ -2173,5 +2196,25 @@
     "saveFailed": "Could not save",
     "saveFailedReason": "Could not save: {reason}",
     "missingMigration": "The database is missing alert tables or columns. Run the 048 and 049 migration SQLs in Supabase and reload this page."
+  },
+  "QuickReplies": {
+    "title": "Quick replies",
+    "description": "Reusable snippets — plain text or a saved interactive message — that agents can insert from the inbox composer.",
+    "newQuickReply": "New quick reply",
+    "editQuickReply": "Edit quick reply",
+    "empty": "No quick replies yet. Create one to reuse it across conversations.",
+    "name": "Name",
+    "namePlaceholder": "e.g. Business hours",
+    "kindText": "Text",
+    "kindInteractive": "Interactive",
+    "textPlaceholder": "The message text to insert",
+    "cancel": "Cancel",
+    "save": "Save",
+    "giveName": "Give the quick reply a name.",
+    "saveFailed": "Couldn't save the quick reply.",
+    "updated": "Quick reply updated.",
+    "created": "Quick reply created.",
+    "confirmDelete": "Delete this quick reply?",
+    "deleteFailed": "Couldn't delete the quick reply."
   }
 }

@@ -751,7 +751,7 @@ export function ContactSidebar({
                         </p>
                         <div className="mt-1 flex items-center justify-between">
                           <p className="text-[10px] text-muted-foreground">
-                            {format(new Date(note.created_at), "MMM d, yyyy HH:mm")}
+                            {format(new Date(note.created_at), "dd/MM/yyyy HH:mm")}
                           </p>
                           <div className="flex gap-0.5">
                             <button

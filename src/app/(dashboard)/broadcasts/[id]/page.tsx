@@ -77,11 +77,11 @@ interface FunnelStep {
  * Width is relative to the largest step (typically Sent) so we
  * always render a full bar at the top and proportional tails.
  */
-function FunnelChart({ steps }: { steps: FunnelStep[] }) {
+function FunnelChart({ steps, title }: { steps: FunnelStep[]; title: string }) {
   const max = Math.max(...steps.map((s) => s.value), 1);
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <h3 className="mb-4 text-sm font-medium text-foreground">Funnel</h3>
+      <h3 className="mb-4 text-sm font-medium text-foreground">{title}</h3>
       <div className="space-y-2">
         {steps.map((step) => {
           const pctOfMax = Math.max(5, Math.round((step.value / max) * 100));
@@ -504,7 +504,7 @@ export default function BroadcastDetailPage() {
         />
       </div>
 
-      <FunnelChart steps={funnelSteps} />
+      <FunnelChart steps={funnelSteps} title={t('funnelTitle')} />
 
       {/* Recipients Table */}
       <div className="rounded-xl border border-border bg-card">
