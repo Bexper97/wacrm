@@ -43,18 +43,18 @@ function toGeminiContents(messages: ChatMessage[]) {
 export async function generateGoogle(args: ProviderArgs): Promise<ProviderResult> {
   const { apiKey, model, systemPrompt, messages, timeoutMs } = args
 
-  const generationConfig: Record<string, unknown> = {
-    maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
-  }
-  // Flash models can skip thinking entirely, which is cheaper and faster for
-  // short replies. Pro models cannot, so only set it for "flash".
-  if (/flash/i.test(model)) {
-    generationConfig.thinkingConfig = { thinkingBudget: 0 }
-  }
+  // Only Gemini 2.5 Flash (non-lite) accepts "thinking off" via thinkingBudget: 0. The 3.x
+  // models use a different control and reject this field with HTTP 400, and Pro models
+  // cannot disable thinking, so it is sent only where it is known to work.
+  const canDisableThinking = /gemini-2\.5-flash(?!-lite)/i.test(model)
 
-  let res: Response
-  try {
-    res = await fetch(`${GEMINI_BASE}/${encodeURIComponent(model)}:generateContent`, {
+  const call = async (withThinkingOff: boolean, bare = false): Promise<Response> => {
+    // `bare` sends no generationConfig at all — the safest request any Gemini model accepts.
+    const generationConfig: Record<string, unknown> = bare
+      ? {}
+      : { maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS }
+    if (withThinkingOff && !bare) generationConfig.thinkingConfig = { thinkingBudget: 0 }
+    return fetch(`${GEMINI_BASE}/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
       headers: {
         'x-goog-api-key': apiKey,
@@ -67,6 +67,13 @@ export async function generateGoogle(args: ProviderArgs): Promise<ProviderResult
       }),
       signal: AbortSignal.timeout(timeoutMs),
     })
+  }
+
+  let res: Response
+  try {
+    res = await call(canDisableThinking)
+    // A 400 usually means the model rejected an optional field: retry once with the bare request.
+    if (res.status === 400) res = await call(false, true)
   } catch (err) {
     throw toNetworkError(err)
   }
