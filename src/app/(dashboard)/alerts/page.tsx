@@ -95,6 +95,7 @@ export default function AlertsPage() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [sendingSummary, setSendingSummary] = useState(false);
   const [missingTables, setMissingTables] = useState(false);
+  const [aiInfo, setAiInfo] = useState<{ provider: string; model: string } | null | undefined>(undefined);
 
   const load = useCallback(async () => {
     if (!accountId) return;
@@ -148,6 +149,12 @@ export default function AlertsPage() {
     if (!accountId || !canManageMembers) return;
     const supabase = createClient();
     (async () => {
+      supabase
+        .from("ai_configs")
+        .select("provider, model")
+        .eq("account_id", accountId)
+        .maybeSingle()
+        .then(({ data }) => setAiInfo(data ? { provider: data.provider as string, model: data.model as string } : null));
       const [profiles, cfg, inst] = await Promise.all([
         supabase.from("profiles").select("user_id, full_name").eq("account_id", accountId),
         supabase.from("alert_settings").select("*").eq("account_id", accountId).maybeSingle(),
@@ -194,7 +201,7 @@ export default function AlertsPage() {
         error?: string;
       };
       if (s.error) toast.error(t("scanAiError", { reason: s.error }));
-      else if (s.skipped === "ai_inactive") toast.message(t("scanAiInactive"));
+      else if (s.skipped === "ai_not_configured") toast.message(t("scanAiInactive"));
       toast.success(t("scanDone", { unanswered: s.unansweredCreated, suspicious: s.suspiciousCreated }));
       await load();
     } catch {
@@ -425,6 +432,23 @@ export default function AlertsPage() {
             <span>
               <span className="block text-foreground">{t("aiScan")}</span>
               <span className="block text-xs text-muted-foreground">{t("aiScanHint")}</span>
+              {aiInfo !== undefined && (
+                <span className="mt-1.5 block text-xs">
+                  {aiInfo ? (
+                    <span className="text-muted-foreground">
+                      {t("aiUsing", {
+                        provider: aiInfo.provider === "anthropic" ? "Anthropic" : "OpenAI",
+                        model: aiInfo.model,
+                      })}
+                    </span>
+                  ) : (
+                    <span className="text-amber-600 dark:text-amber-400">{t("aiNone")}</span>
+                  )}{" "}
+                  <Link href="/agents" className="font-medium text-primary underline-offset-2 hover:underline">
+                    {t("aiConfigure")}
+                  </Link>
+                </span>
+              )}
             </span>
           </label>
         </div>

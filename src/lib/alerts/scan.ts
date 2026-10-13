@@ -278,11 +278,12 @@ export async function scanSuspicious(
 ): Promise<Pick<ScanStats, 'conversationsAnalyzed' | 'suspiciousCreated' | 'skipped' | 'error'>> {
   let config
   try {
-    config = await loadAiConfig(db, accountId)
+    // The scan only needs the saved key/model — it must NOT depend on the chatbot's master switch.
+    config = await loadAiConfig(db, accountId, { requireActive: false })
   } catch (err) {
     return { conversationsAnalyzed: 0, suspiciousCreated: 0, error: err instanceof Error ? err.message : String(err) }
   }
-  if (!config) return { conversationsAnalyzed: 0, suspiciousCreated: 0, skipped: 'ai_inactive' }
+  if (!config) return { conversationsAnalyzed: 0, suspiciousCreated: 0, skipped: 'ai_not_configured' }
 
   const since = new Date(now.getTime() - AI_LOOKBACK_DAYS * 86_400_000).toISOString()
   const { data: convs } = await db
