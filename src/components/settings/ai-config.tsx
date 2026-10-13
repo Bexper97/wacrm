@@ -315,17 +315,31 @@ export function AiConfig() {
                 <Label htmlFor="ai-model">{t('model')}</Label>
                 <Input
                   id="ai-model"
-                  list="ai-model-options"
+                  name="ai-model-name"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                   placeholder={AI_PROVIDER_DEFAULT_MODEL[provider]}
                   disabled={disabled}
                 />
-                <datalist id="ai-model-options">
-                  {modelOptions.map((m) => (
-                    <option key={m} value={m} />
-                  ))}
-                </datalist>
+                {modelOptions.length > 0 && (
+                  <select
+                    aria-label={t('pickModel')}
+                    className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm text-foreground"
+                    value={modelOptions.includes(model) ? model : ''}
+                    onChange={(e) => e.target.value && setModel(e.target.value)}
+                    disabled={disabled}
+                  >
+                    <option value="">{t('pickModel')}</option>
+                    {modelOptions.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <button
                   type="button"
                   onClick={loadModels}

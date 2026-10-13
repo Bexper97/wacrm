@@ -469,7 +469,10 @@ export default function AlertsPage() {
               <div className="flex flex-wrap gap-2">
                 <Input
                   id="alert-model"
-                  list="alert-model-suggestions"
+                  name="alert-model-name"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   className="min-w-56 flex-1"
                   placeholder={t("aiModelPlaceholder")}
                   value={settings.ai_model}
@@ -503,11 +506,19 @@ export default function AlertsPage() {
                   })}
                 </Button>
               </div>
-              <datalist id="alert-model-suggestions">
+              <select
+                aria-label={t("aiModelPick")}
+                className={SELECT}
+                value=""
+                onChange={(e) => e.target.value && setSettings({ ...settings, ai_model: e.target.value })}
+              >
+                <option value="">{t("aiModelPick")}</option>
                 {(modelList.length > 0 ? modelList : (AI_MODEL_SUGGESTIONS[aiInfo.provider as AiProvider] ?? [])).map((m) => (
-                  <option key={m} value={m} />
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
                 ))}
-              </datalist>
+              </select>
               <p className="text-xs text-muted-foreground">{t("aiModelHint")}</p>
             </div>
           )}
