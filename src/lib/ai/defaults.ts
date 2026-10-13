@@ -13,7 +13,7 @@ import type { AiProvider } from './types'
 export const AI_PROVIDER_DEFAULT_MODEL: Record<AiProvider, string> = {
   openai: 'gpt-5.4-mini',
   anthropic: 'claude-haiku-4-5-20251001',
-  google: 'gemini-2.5-flash',
+  google: 'gemini-3.8-flash',
 }
 
 /**
@@ -24,14 +24,14 @@ export const AI_PROVIDER_DEFAULT_MODEL: Record<AiProvider, string> = {
 export const AI_PROVIDER_ECONOMY_MODEL: Record<AiProvider, string> = {
   openai: 'gpt-5.4-nano',
   anthropic: 'claude-haiku-4-5-20251001',
-  google: 'gemini-2.5-flash-lite',
+  google: 'gemini-3.8-flash-lite',
 }
 
 /** Extra model names offered as suggestions (never an allow-list). */
 export const AI_MODEL_SUGGESTIONS: Record<AiProvider, string[]> = {
   openai: ['gpt-5.4-nano', 'gpt-5.4-mini', 'gpt-4o-mini'],
   anthropic: ['claude-haiku-4-5-20251001'],
-  google: ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'],
+  google: ['gemini-3.8-flash-lite', 'gemini-3.8-flash'],
 }
 
 /**

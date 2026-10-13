@@ -99,6 +99,7 @@ export default function AlertsPage() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [sendingSummary, setSendingSummary] = useState(false);
   const [missingTables, setMissingTables] = useState(false);
+  const [modelList, setModelList] = useState<string[]>([]);
   const [aiInfo, setAiInfo] = useState<{ provider: string; model: string } | null | undefined>(undefined);
 
   const load = useCallback(async () => {
@@ -477,12 +478,25 @@ export default function AlertsPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() =>
-                    setSettings({
-                      ...settings,
-                      ai_model: AI_PROVIDER_ECONOMY_MODEL[aiInfo.provider as AiProvider] ?? "",
-                    })
-                  }
+                  onClick={async () => {
+                    const provider = aiInfo.provider as AiProvider;
+                    let pick: string | null = null;
+                    try {
+                      const res = await fetch("/api/ai/models", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ provider }),
+                      });
+                      if (res.ok) {
+                        const data = await res.json();
+                        setModelList(data.models ?? []);
+                        pick = data.economy ?? null;
+                      }
+                    } catch {
+                      /* falls back to the built-in suggestion */
+                    }
+                    setSettings((prev) => ({ ...prev, ai_model: pick ?? AI_PROVIDER_ECONOMY_MODEL[provider] ?? "" }));
+                  }}
                 >
                   {t("aiModelEconomy", {
                     model: AI_PROVIDER_ECONOMY_MODEL[aiInfo.provider as AiProvider] ?? "",
@@ -490,7 +504,7 @@ export default function AlertsPage() {
                 </Button>
               </div>
               <datalist id="alert-model-suggestions">
-                {(AI_MODEL_SUGGESTIONS[aiInfo.provider as AiProvider] ?? []).map((m) => (
+                {(modelList.length > 0 ? modelList : (AI_MODEL_SUGGESTIONS[aiInfo.provider as AiProvider] ?? [])).map((m) => (
                   <option key={m} value={m} />
                 ))}
               </datalist>

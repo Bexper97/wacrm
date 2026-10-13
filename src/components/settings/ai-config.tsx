@@ -63,6 +63,8 @@ export function AiConfig() {
   const [configured, setConfigured] = useState(false);
   const [provider, setProvider] = useState<AiProvider>('openai');
   const [model, setModel] = useState(AI_PROVIDER_DEFAULT_MODEL.openai);
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [keyEdited, setKeyEdited] = useState(false);
   const [showKey, setShowKey] = useState(false);
@@ -136,6 +138,29 @@ export function AiConfig() {
   };
 
   const keyPayload = () => (keyEdited ? apiKey.trim() : undefined);
+
+  // Ask the provider which models this key can use (names change; never trust a hard-coded one).
+  const loadModels = async () => {
+    setLoadingModels(true);
+    try {
+      const res = await fetch('/api/ai/models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, api_key: keyEdited ? apiKey.trim() : undefined }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(t('modelsFailed', { reason: data.error ?? `HTTP ${res.status}` }));
+        return;
+      }
+      setModelOptions(data.models ?? []);
+      toast.success(t('modelsLoaded', { count: (data.models ?? []).length }));
+    } catch {
+      toast.error(t('modelsFailed', { reason: 'network' }));
+    } finally {
+      setLoadingModels(false);
+    }
+  };
 
   // undefined = leave unchanged; '' typed = null (clear); text = set.
   const embeddingsKeyPayload = () =>
@@ -290,11 +315,25 @@ export function AiConfig() {
                 <Label htmlFor="ai-model">{t('model')}</Label>
                 <Input
                   id="ai-model"
+                  list="ai-model-options"
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                   placeholder={AI_PROVIDER_DEFAULT_MODEL[provider]}
                   disabled={disabled}
                 />
+                <datalist id="ai-model-options">
+                  {modelOptions.map((m) => (
+                    <option key={m} value={m} />
+                  ))}
+                </datalist>
+                <button
+                  type="button"
+                  onClick={loadModels}
+                  disabled={disabled || loadingModels}
+                  className="text-xs font-medium text-primary hover:underline disabled:opacity-50"
+                >
+                  {loadingModels ? '…' : t('loadModels')}
+                </button>
               </div>
             </div>
 
