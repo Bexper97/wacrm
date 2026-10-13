@@ -121,6 +121,7 @@ html[data-mode="dark"] {
   --sidebar-border: rgba(201, 177, 253, 0.08);
   --lime: #b9f32e;
   --lime-foreground: #14082f;
+  color-scheme: dark;
   --glow-a: rgba(136, 88, 241, 0.22);
   --glow-b: rgba(185, 243, 46, 0.05);
   --grid-line: rgba(201, 177, 253, 0.028);
@@ -155,6 +156,7 @@ html[data-mode="light"] {
   --sidebar-border: rgba(52, 31, 113, 0.08);
   --lime: #b9f32e;
   --lime-foreground: #14082f;
+  color-scheme: light;
   --glow-a: rgba(136, 88, 241, 0.14);
   --glow-b: rgba(185, 243, 46, 0.1);
   --grid-line: rgba(52, 31, 113, 0.035);
@@ -252,6 +254,16 @@ html[data-theme="rose"] {
   }
   html {
     @apply font-sans;
+  }
+  /* Native <select> popups are drawn by the browser: give them theme colors so
+   * options stay readable in dark mode (color-scheme above handles the rest). */
+  select {
+    color: var(--foreground);
+  }
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
   }
   ::selection {
     background: color-mix(in oklab, var(--primary) 40%, transparent);
